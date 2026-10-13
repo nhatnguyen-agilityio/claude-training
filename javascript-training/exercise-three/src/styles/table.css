@@ -1,0 +1,30 @@
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+table {
+  margin-bottom: 20px;
+}
+
+th:first-child {
+  padding-right: 20px;
+}
+
+button, .btn {
+  min-width: 60px;
+  height: 40px;
+  background-color: brown;
+  color: #fff;
+  border: none;
+  margin: 0 10px;
+  border-radius: 10px;
+  box-shadow: 5px 5px 5px #666;
+}
+
+button:hover, .btn:hover {
+  background-color: rgb(175, 122, 22);
+}
+
+.item {
+  height: 30px;
+}

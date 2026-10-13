@@ -1,0 +1,84 @@
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background-color: hsl(210, 36%, 96%);
+}
+
+main {
+  min-height: calc(100vh - 3rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container {
+  width: 400px;
+  height: 200px;
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 12px;
+  box-shadow: 20px 20px 20px 20px #999;
+}
+
+h2 {
+  font-size: 36px;
+}
+
+#open {
+  width: 120px;
+  height: 30px;
+  border: none;
+  background-color: rgb(7, 188, 233);
+  color: #fff;
+  text-transform: uppercase;
+  font-weight: 400;
+  border-radius: 10px;
+}
+
+#open:hover {
+  background-color: rgb(3, 156, 156);
+}
+
+.overlay {
+  height: 100%;
+  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background-color: rgba(0,0,0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: -10;
+  visibility: hidden;
+}
+
+.open-modal {
+  z-index: 10;
+  visibility: visible;
+}
+
+.modal-container {
+  width: 600px;
+  height: 300px;
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  position: relative;
+}
+
+.close-modal {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: none;
+  border: none;
+}
+
+.far {
+  font-size: 24px;
+  color: red;
+}
