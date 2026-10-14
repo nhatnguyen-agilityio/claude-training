@@ -71,4 +71,42 @@ describe("completed todos after reloading the page", () => {
     expect(isCompleted("B")).toBe(true);
     expect(isCompleted("C")).toBe(false);
   });
+
+  // Scenario 4: unticking must also be saved
+  test("keeps a todo uncompleted after unticking it and reloading", () => {
+    markCompleted("C"); // tick
+    markCompleted("C"); // click again = untick
+
+    loadPage();
+
+    expect(isCompleted("C")).toBe(false);
+  });
+
+  // Scenario 5: right-click delete must keep the completed status too
+  test("keeps a completed todo after right-click deleting a todo above it and reloading", () => {
+    markCompleted("C");
+
+    findTodo("A").dispatchEvent(new Event("contextmenu"));
+    loadPage();
+
+    expect(todoTexts()).toEqual(["B", "C"]);
+    expect(isCompleted("C")).toBe(true);
+  });
+
+  // Scenario 6: todos saved by the old version (completed status kept by position)
+  test("keeps the completed status of todos saved by the old version", () => {
+    localStorage.clear();
+    localStorage.setItem("todos", JSON.stringify([{ todo: "A" }, { todo: "C" }]));
+    localStorage.setItem("completed", "[1]");
+
+    loadPage();
+
+    expect(isCompleted("A")).toBe(false);
+    expect(isCompleted("C")).toBe(true);
+    expect(localStorage.getItem("completed")).toBeNull();
+
+    loadPage();
+
+    expect(isCompleted("C")).toBe(true);
+  });
 });
