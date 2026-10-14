@@ -4,6 +4,7 @@ const todoForm = document.querySelector(".todo-form");
 const todoList = document.querySelector(".list-todo");
 
 const todosLS = JSON.parse(localStorage.getItem('todos'));
+const completedLS = JSON.parse(localStorage.getItem('completed')) || [];
 
 // handle submit
 todoForm.addEventListener("submit", (e) => {
@@ -12,13 +13,13 @@ todoForm.addEventListener("submit", (e) => {
 });
 
 // add todo
-const addTodo = (todo) => {
+const addTodo = (todo, index) => {
   let text = input.value;
   let checked = false;
 
   if(todo) {
     text = todo.todo;
-    checked = todo.checked;
+    checked = completedLS.includes(index);
   }
 
   if (text) {
@@ -34,7 +35,8 @@ const addTodo = (todo) => {
 
     const check = todo.querySelector('.check');
     check.addEventListener('click', () => {
-      updateLS();
+      const position = [...todoList.children].indexOf(todo);
+      updateCompleted(position, check.checked);
     })
     todo.addEventListener('contextmenu', () => {
       todo.remove();
@@ -62,13 +64,20 @@ const updateLS = () => {
   const todoLS = [];
   todos.forEach((todo) => {
     todoLS.push({
-      todo: todo.firstElementChild.nextElementSibling.innerHTML,
-      checked: todo.firstElementChild.checked
+      todo: todo.firstElementChild.nextElementSibling.innerHTML
     })
   })
   localStorage.setItem('todos', JSON.stringify(todoLS));
 }
 
-todosLS.forEach((item) => {
-  addTodo(item)
+// save completed todos by their position in the list
+const updateCompleted = (position, checked) => {
+  const found = completedLS.indexOf(position);
+  if (checked && found === -1) completedLS.push(position);
+  if (!checked && found !== -1) completedLS.splice(found, 1);
+  localStorage.setItem('completed', JSON.stringify(completedLS));
+}
+
+todosLS.forEach((item, index) => {
+  addTodo(item, index)
 })
