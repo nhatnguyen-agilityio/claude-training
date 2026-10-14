@@ -71,8 +71,8 @@ const updateLS = () => {
   const todoLS = [];
   todos.forEach((todo) => {
     todoLS.push({
-      todo: todo.firstElementChild.nextElementSibling.innerHTML,
-      checked: todo.firstElementChild.checked
+      todo: todo.querySelector('.todo-text').innerHTML,
+      checked: todo.querySelector('.check').checked
     })
   })
   localStorage.setItem('todos', JSON.stringify(todoLS));
