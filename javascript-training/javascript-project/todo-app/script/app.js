@@ -5,6 +5,15 @@ const todoList = document.querySelector(".list-todo");
 
 const todosLS = JSON.parse(localStorage.getItem('todos'));
 
+// todos saved by the old version kept their completed status by position
+const legacyCompletedLS = JSON.parse(localStorage.getItem('completed'));
+if (legacyCompletedLS && todosLS) {
+  legacyCompletedLS.forEach((position) => {
+    if (todosLS[position]) todosLS[position].checked = true;
+  });
+}
+localStorage.removeItem('completed');
+
 // handle submit
 todoForm.addEventListener("submit", (e) => {
   e.preventDefault();
