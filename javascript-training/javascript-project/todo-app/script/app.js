@@ -19,7 +19,7 @@ const addTodo = (todo, index) => {
 
   if(todo) {
     text = todo.todo;
-    checked = completedLS.includes(index);
+    checked = todo.checked;
   }
 
   if (text) {
@@ -35,8 +35,7 @@ const addTodo = (todo, index) => {
 
     const check = todo.querySelector('.check');
     check.addEventListener('click', () => {
-      const position = [...todoList.children].indexOf(todo);
-      updateCompleted(position, check.checked);
+      updateLS();
     })
     todo.addEventListener('contextmenu', () => {
       todo.remove();
@@ -64,7 +63,8 @@ const updateLS = () => {
   const todoLS = [];
   todos.forEach((todo) => {
     todoLS.push({
-      todo: todo.firstElementChild.nextElementSibling.innerHTML
+      todo: todo.firstElementChild.nextElementSibling.innerHTML,
+      checked: todo.firstElementChild.checked
     })
   })
   localStorage.setItem('todos', JSON.stringify(todoLS));
