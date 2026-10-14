@@ -71,4 +71,14 @@ describe("completed todos after reloading the page", () => {
     expect(isCompleted("B")).toBe(true);
     expect(isCompleted("C")).toBe(false);
   });
+
+  // Scenario 4: unticking must also be saved
+  test("keeps a todo uncompleted after unticking it and reloading", () => {
+    markCompleted("C"); // tick
+    markCompleted("C"); // click again = untick
+
+    loadPage();
+
+    expect(isCompleted("C")).toBe(false);
+  });
 });
