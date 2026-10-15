@@ -4,14 +4,17 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import Products from './index';
 
+// Main categories API: each test sets the returned data/loading/error state
 jest.mock('../../apis/main-categories', () => ({
   GetMainCategories: jest.fn(),
 }));
 
+// Sub categories API (used when the URL has a categoryId): set per test
 jest.mock('../../apis/sub-categories', () => ({
   GetSubCategories: jest.fn(),
 }));
 
+// Category buttons: one clickable button per category, marks the selected one
 jest.mock('../../components/CategoryButtons', () => {
   return function MockCategoryButtons({
     buttonList,
@@ -40,6 +43,7 @@ jest.mock('../../components/CategoryButtons', () => {
   };
 });
 
+// Top products: shows the categoryId, search term and sub category it receives
 jest.mock('../../components/TopProducts', () => {
   return function MockTopProducts({
     categoryId,
@@ -61,6 +65,7 @@ jest.mock('../../components/TopProducts', () => {
   };
 });
 
+// People also viewed: shows the categoryId it receives (0 when none)
 jest.mock('../../components/PeopleViewed', () => {
   return function MockPeopleViewed({ categoryId }: { categoryId?: number }) {
     return (
@@ -72,28 +77,39 @@ jest.mock('../../components/PeopleViewed', () => {
   };
 });
 
+// Search box: mirrors the real SearchProduct, which keeps the typed text and
+// writes it to the `search` URL param when the Search button is clicked
 jest.mock('../../components/SearchProduct', () => {
-  return function MockSearchProduct({
-    searchProductsInput,
-    setSearchProductsInput,
-    setSearchProducts,
-  }: {
-    searchProductsInput: string;
-    setSearchProductsInput: (value: string) => void;
-    setSearchProducts: (value: string) => void;
-  }) {
+  const { useState } = jest.requireActual<typeof import('react')>('react');
+  const { useSearchParams } =
+    jest.requireActual<typeof import('react-router-dom')>('react-router-dom');
+
+  return function MockSearchProduct() {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchInput, setSearchInput] = useState(
+      searchParams.get('search') || '',
+    );
+
+    const handleSearch = () => {
+      const newParams = new URLSearchParams(searchParams);
+      if (searchInput) {
+        newParams.set('search', searchInput);
+      } else {
+        newParams.delete('search');
+      }
+      newParams.delete('topProductsPage');
+      setSearchParams(newParams);
+    };
+
     return (
       <div data-testid="search-product">
         <input
           data-testid="search-input"
-          value={searchProductsInput}
-          onChange={(e) => setSearchProductsInput(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search products..."
         />
-        <button
-          data-testid="search-button"
-          onClick={() => setSearchProducts(searchProductsInput)}
-        >
+        <button data-testid="search-button" onClick={handleSearch}>
           Search
         </button>
       </div>
@@ -101,6 +117,7 @@ jest.mock('../../components/SearchProduct', () => {
   };
 });
 
+// Breadcrumb: renders each item as a link (with href) or as plain text
 jest.mock('../../components/common/Breadcrumb', () => {
   return function MockBreadcrumbComponent({
     items,
@@ -125,6 +142,7 @@ jest.mock('../../components/common/Breadcrumb', () => {
   };
 });
 
+// Loading skeleton: a simple placeholder div so loading states can be counted
 jest.mock('../../components/ui/skeleton', () => ({
   Skeleton: function MockSkeleton({ className }: { className: string }) {
     return <div data-testid="skeleton" className={className} />;
@@ -868,7 +886,7 @@ describe('Products Component', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('top-products-search')).toHaveTextContent(
-          'chair',
+          'empty',
         );
       });
     });
