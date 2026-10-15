@@ -131,7 +131,26 @@ describe('FooterComponent', () => {
         </TestQueryClient>,
       );
 
-      expect(screen.getByText('© 2025 — Copyright')).toBeInTheDocument();
+      const year = new Date().getFullYear();
+      expect(screen.getByText(`© ${year} — Copyright`)).toBeInTheDocument();
+    });
+
+    it('renders copyright text with the current year from the system clock', () => {
+      const spy = jest
+        .spyOn(Date.prototype, 'getFullYear')
+        .mockReturnValue(2031);
+
+      try {
+        render(
+          <TestQueryClient>
+            <Footer />
+          </TestQueryClient>,
+        );
+
+        expect(screen.getByText('© 2031 — Copyright')).toBeInTheDocument();
+      } finally {
+        spy.mockRestore();
+      }
     });
   });
 
