@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r \".tool_input.file_path // .tool_response.filePath // empty\"); case \"$f\" in */web/furniture-store/*) ;; *) exit 0 ;; esac; app=\"${f%%/web/furniture-store/*}/web/furniture-store\"; p=\"$app/node_modules/.bin/prettier\"; [ -x \"$p\" ] || exit 0; cd \"$app\" && \"$p\" --write --ignore-unknown \"$f\" >/dev/null 2>&1 || true",
+            "timeout": 30,
+            "statusMessage": "Formatting with Prettier..."
+          }
+        ]
+      }
+    ]
+  }
+}
