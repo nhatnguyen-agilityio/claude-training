@@ -1,10 +1,12 @@
-# Day 05: Auto Memory, Compaction and Checkpointing
+# Day 05: Auto Memory, Compaction, Checkpointing and Context
 
 **Training project:** Furniture Store (`react-training/practice-one`)
 **Date:** 2026-10-16
 **Exercises:**
 - Part 1: Auto memory + compaction: run a long session, compact, observe what survives.
 - Part 2: Checkpointing / `/rewind`: make a bad edit, rewind it. ([jump to Part 2](#part-2-checkpointing-and-rewind))
+- Part 3: Prove context matters: the same task in a fresh session vs one that has read the codebase. ([jump to Part 3](#part-3-prove-context-matters))
+
 **Branch:** `feat/day-5-exercises`
 **Worked with:** Claude (AI assistant in the Claude desktop app)
 
@@ -252,3 +254,110 @@ Prompt: *"Always show the red badge even when the cart is empty, rename the aria
 - ✅ Compared "code and conversation" with "code only", and saw Claude get confused when only the code was rewound
 - ✅ Found from the session log that rewind restores whole tracked files, which explains why the `sed` change was undone
 - ✅ Finished with a clean working tree, checked with `git diff` and `git status`
+
+---
+
+# Part 3: Prove context matters
+
+**Exercise:** Same task in a fresh session vs one that has read the codebase; compare quality and token use.
+**Task (same text in every session, vague on purpose):**
+> Add a React Query hook that fetches a user's order history from the API (newest first), and a unit test for it, in the furniture-store app.
+
+**Why this task:** the API already has 25 orders and an `ORDERS` route, there is an `OrderInterface` type, and `apis/user-cart.ts` is an almost identical pattern. A session that knows the codebase should copy that pattern; a session that doesn't has to guess.
+
+## Overview
+
+| Session | Context before the task | Result |
+|---|---|---|
+| **A: Fresh** | None (only the auto-loaded root `CLAUDE.md`) | ✅ Hook + 8 tests, **10/10** on the checklist, done in one prompt |
+| **B: Primed** | Read practice-one `CLAUDE.md`, `user-cart.ts` + test, routes, query keys, `OrderInterface` | ⚠️ Priming measured, but the task run was **not a fair test** (see below) |
+| **C: Fresh + precise prompt** (optional) | Prompt names the files to follow | ⏭️ Skipped |
+
+### How we split the work
+
+| Me | Claude |
+|---|---|
+| Ran sessions A and B by hand, measured `/context` | Chose a realistic task and wrote the plan, prompts and scoring checklist |
+| Committed A, cleaned up the experiment branches | Found the branch mistake in B and reset the branch |
+| Asked the analysis questions | Read the session logs and git history, scored the code, wrote this part |
+
+## Session A: fresh
+
+**What it did on its own (from the session log):**
+1. Read `practice-one/CLAUDE.md` and listed `src/`, because the root `CLAUDE.md` says to follow it.
+2. Read `apis/user-cart.ts` and its test, `apis/add-order.ts`, `constants/api-routers.ts`, `constants/query-keys.ts` and the order type.
+3. Checked `api/server.js` and `db.json` for the order fields (`orderDate`).
+4. Wrote the code in one go, then ran tests, type-check and lint.
+
+**Result:** `src/apis/user-orders.ts` (28 lines), `user-orders.test.ts` (8 tests), and one new line in `query-keys.ts`. All `src/apis` tests pass: 17 files, 482 tests. **One prompt, no fixes, under a minute.**
+
+### Quality checklist
+
+| # | Check | A |
+|---|---|---|
+| 1 | New kebab-case file in `src/apis/` (`user-orders.ts`) | ✅ |
+| 2 | Reuses `API_ROUTES.ORDERS` (no hardcoded URL) | ✅ |
+| 3 | Uses `API_ENDPOINT` from `constants/env-variables` | ✅ |
+| 4 | Adds `QUERY_KEY.USER_ORDERS` (no inline array) | ✅ |
+| 5 | Reuses `OrderInterface` (no duplicate type) | ✅ |
+| 6 | Same shape as `user-cart.ts` (`_sort`/`_order`, `enabled`, `staleTime`), plus a guard so it never fetches **all** users' orders without a `userId` | ✅ |
+| 7 | Test next to the hook, mocks `fetch` and `constants/*` | ✅ |
+| 8 | Test wraps the hook in `QueryClientProvider` | ✅ |
+| 9 | Tests pass | ✅ |
+| 10 | No new dependencies, no unrelated changes (3 files) | ✅ |
+
+**Bonus:** every test name follows **"should … when …"**. That is the auto-memory rule saved in Part 1, so memory shaped the code in a new session.
+
+## Session B: primed
+
+- Priming (reading 6 files + a written summary of the conventions): **28.5k → 55.2k tokens**.
+- **The task run wasn't a fair test.** I created `exp/context-primed` while still on `exp/context-fresh`, so session A's `user-orders.ts` was already in the code. B noticed it, ran its test, and wisely **wrote nothing** instead of duplicating it. That is good context-aware behaviour, but it means B's code quality couldn't be compared.
+- Claude found the mistake from git history and reset the branch, but I didn't re-run B's task before cleaning up.
+
+## Token comparison
+
+Numbers are context size per step, from `/context` and the session logs.
+
+| | A: fresh | B: primed |
+|---|---|---|
+| Start (system prompt, tools, root `CLAUDE.md`) | 28.5k | 28.5k |
+| After exploring / priming | ~58k (Claude explored by itself) | 55.2k (I told it what to read) |
+| End of task | **62.7k** | ~64.7k (task found existing code) |
+| API calls for the task | 5 | 2 priming + 6 task |
+| Output tokens | 4.7k | 4.2k |
+| Prompts and fixes needed | 1 prompt, 0 fixes | n/a |
+| Quality score | **10/10** | n/a (not a fair run) |
+
+**Answers to the plan's questions:**
+- **Did A spend tokens exploring anyway?** Yes: about **30k tokens** (28.5k → ~58k) went on reading before writing. It found **exactly the right files**, because the practice-one `CLAUDE.md` (Part 0 of today) points to `apis/`, `constants/` and `user-cart.ts`'s test style.
+- **Was B's priming worth it?** Not for this one task: priming cost about the same (~27k) as A's own exploring, and A already reached 10/10. Priming pays off when one session does **several tasks** on the same code, or when Claude would otherwise explore the **wrong** files.
+
+## What I learned
+
+1. **Context matters, and a good `CLAUDE.md` *is* context.** The "fresh" session wasn't really blind: the root `CLAUDE.md` sent it to the practice-one rules, which sent it to the right files. A truly context-free test would need a session without `CLAUDE.md`.
+2. **Claude gathers context by itself when the task is vague.** It spent ~30k tokens reading first. Good guidance makes that reading targeted instead of wide.
+3. **Exploring and priming cost about the same tokens.** The difference is who chooses the files: me (priming, precise prompts) or Claude (exploring). Targeted context is cheapest.
+4. **Memory carries into new sessions.** The Part 1 test-name memory showed up in session A's tests without being asked.
+5. **Experiments need an identical starting point.** I branched B from A's branch, so B saw A's work. Before each run, check `git log -1` and `git status`.
+6. **Context-aware Claude avoids duplicate work.** B checked existing code before writing and stopped when the hook already existed.
+7. **Token budget:** about 28k is fixed overhead (system prompt, tools, `CLAUDE.md`). A small feature needed another ~30k of reading. That is only ~6% of the 1M window, so the issue is usually *relevance*, not size.
+
+## What I achieved with AI
+
+- ✅ Designed a fair, realistic comparison task with a 10-point quality checklist
+- ✅ Session A produced a 10/10 hook and 8 passing tests in one prompt, with no fixes
+- ✅ Measured token use for exploring (~30k) vs priming (~27k) from `/context` and the session logs
+- ✅ Showed that Exercise 1's `CLAUDE.md` and Part 1's auto memory gave even a "fresh" session the right context
+- ✅ Found and explained a setup mistake from git history instead of reporting a wrong result
+- ⏭️ Not done: a fair re-run of session B's task, and optional session C (precise prompt). Session A's code can still be recovered with `git branch exp/context-fresh 1a51758` if needed.
+
+---
+
+# Day 05 summary
+
+| Part | Exercise | Key takeaway |
+|---|---|---|
+| 0 | Team `CLAUDE.md` for practice-one (committed in `ec98eda`) | A short, specific `CLAUDE.md` steers every session, even "fresh" ones |
+| 1 | Auto memory + compaction | Only what's on disk survives; tell `/compact` what to keep |
+| 2 | Checkpointing / `/rewind` | Rewind code *and* conversation; checkpoints track files, not commands; git is still the safety net |
+| 3 | Prove context matters | Relevant context beats more context; a good `CLAUDE.md` gives it cheaply |
