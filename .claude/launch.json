@@ -8,6 +8,12 @@
       "port": 5001
     },
     {
+      "name": "furniture-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "react-training/practice-one/web/furniture-store", "dev"],
+      "port": 5173
+    },
+    {
       "name": "mcp-inspector",
       "runtimeExecutable": "uv",
       "runtimeArgs": ["--directory", "react-training/practice-one/mcp-server", "run", "mcp", "dev", "server.py"],
