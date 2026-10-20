@@ -6,7 +6,7 @@ eCommerce practice app. `api/` = json-server mock backend, `web/furniture-store/
 
 - API: `cd api && pnpm install && pnpm start` → http://localhost:5001
 - Web: `cd web/furniture-store && pnpm install && pnpm dev`
-  - Needs `.env` (copy `.env.sample`): `VITE_LOCAL_API_URL=http://localhost:5001`
+  - Needs `.env` (copy `.env.sample`): `VITE_LOCAL_API_URL=http://localhost:5001/`. Keep the trailing slash: routes in `constants/api-routers.ts` have no leading slash, so without it every request URL is invalid.
 - Test: `pnpm test` (Jest + RTL) · single file: `pnpm test src/apis/products.test.ts`
 - Lint / types / build: `pnpm lint` · `pnpm build` (runs `tsc -b`)
 - Storybook: `pnpm storybook` (port 6006)
