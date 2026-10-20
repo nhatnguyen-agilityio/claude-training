@@ -2,12 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import { QUERY_KEY } from '../constants/query-keys';
 import { API_ENDPOINT } from '../constants/env-variables';
 import { API_ROUTES } from '../constants/api-routers';
+import type { CartInterface } from '../interfaces/cart';
 
 const fetchCartByUser = async (
   userId: number,
   sortBy = 'createdAt',
   order: 'asc' | 'desc' = 'desc',
-) => {
+): Promise<CartInterface[]> => {
   const url = new URL(`${API_ENDPOINT}${API_ROUTES.CARTS}`);
   url.searchParams.set('_sort', String(sortBy));
   url.searchParams.set('_order', String(order));
