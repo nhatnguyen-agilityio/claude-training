@@ -1,0 +1,10 @@
+[project]
+name = "furniture-store-mcp"
+version = "0.1.0"
+description = "Read-only MCP server exposing furniture-store products and stock from the json-server API"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp[cli]>=1.20,<2",
+]
