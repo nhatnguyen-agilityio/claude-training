@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "furniture-api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "react-training/practice-one/api", "start"],
+      "port": 5001
+    },
+    {
+      "name": "mcp-inspector",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["--directory", "react-training/practice-one/mcp-server", "run", "mcp", "dev", "server.py"],
+      "port": 6274
+    }
+  ]
+}
