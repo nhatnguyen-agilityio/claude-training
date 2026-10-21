@@ -5,7 +5,10 @@ import Button from '../common/Button';
 import { Input } from '../ui/input';
 import { useSearchParams } from 'react-router-dom';
 import type { ProductVariant } from '../../interfaces/products';
-import { FREE_SHIPPING_THRESHOLD } from '../../constants/cart';
+import {
+  FREE_SHIPPING_THRESHOLD,
+  LOW_STOCK_THRESHOLD,
+} from '../../constants/cart';
 import { formatPrice } from '../../utils/cart-summary';
 
 interface ProductInfoProps {
@@ -60,16 +63,20 @@ const ProductInfo = ({
     }
   }, [variantIdParam, variants]);
 
+  const stock = variants[selected]?.stock ?? 0;
+  const isOutOfStock = stock === 0;
+  const isLowStock = stock < LOW_STOCK_THRESHOLD;
+
   const handleAddToCartClick = useCallback(
     (e: MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
 
-      if (selectedVariantId) {
+      if (selectedVariantId && !isOutOfStock) {
         onAddToCart(selectedVariantId, Number(quantity));
       }
     },
-    [onAddToCart, selectedVariantId, quantity],
+    [onAddToCart, selectedVariantId, quantity, isOutOfStock],
   );
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,8 +118,12 @@ const ProductInfo = ({
         </p>
         <p className="text-gray-500 line-through mr-3">{`$${basePrice}`}</p>
         <p className="py-1 px-3 bg-red-50 rounded-4xl text-red-700">-40%</p>
-        <p className="ml-3 font-medium">
-          In stock: {variants[selected]?.stock || 0}
+        <p className={`ml-3 font-medium ${isLowStock ? 'text-red-600' : ''}`}>
+          {isOutOfStock
+            ? 'Out of stock'
+            : isLowStock
+              ? `Only ${stock} left`
+              : `In stock: ${stock}`}
         </p>
       </div>
 
@@ -159,14 +170,16 @@ const ProductInfo = ({
         <Button
           variant={'outline'}
           onClick={handleAddToCartClick}
-          disabled={isLoading || !userId}
+          disabled={isLoading || !userId || isOutOfStock}
           className="w-full py-3 bg-app-primary hover:bg-app-tertiary hover:text-white border-none rounded-3xl text-white font-light text-xl [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]"
         >
           {!userId
             ? 'Sign in to add item to cart'
-            : isLoading
-              ? 'Adding to cart...'
-              : 'Add to cart'}
+            : isOutOfStock
+              ? 'Out of stock'
+              : isLoading
+                ? 'Adding to cart...'
+                : 'Add to cart'}
         </Button>
       </div>
 

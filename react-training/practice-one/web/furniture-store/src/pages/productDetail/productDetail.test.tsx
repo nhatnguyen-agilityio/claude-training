@@ -217,6 +217,7 @@ describe('ProductDetail Page', () => {
       {
         id: 1,
         hex: '#8B4513',
+        stock: 10,
         images: [
           { url: 'https://example.com/image1.jpg', alt: 'Armchair front view' },
           { url: 'https://example.com/image2.jpg', alt: 'Armchair side view' },
@@ -226,6 +227,7 @@ describe('ProductDetail Page', () => {
       {
         id: 2,
         hex: '#000000',
+        stock: 5,
         images: [
           { url: 'https://example.com/image4.jpg', alt: 'Black armchair' },
         ],
@@ -458,7 +460,7 @@ describe('ProductDetail Page', () => {
       const quantityInput = screen.getByDisplayValue('1');
       expect(quantityInput).toHaveAttribute('type', 'number');
       expect(quantityInput).toHaveAttribute('min', '1');
-      expect(quantityInput).toHaveAttribute('max', '100');
+      expect(quantityInput).toHaveAttribute('max', '10');
     });
 
     it('handles quantity change', async () => {
@@ -712,7 +714,7 @@ describe('ProductDetail Page', () => {
       const quantityInput = screen.getByDisplayValue('1');
       expect(quantityInput).toHaveAttribute('type', 'number');
       expect(quantityInput).toHaveAttribute('min', '1');
-      expect(quantityInput).toHaveAttribute('max', '100');
+      expect(quantityInput).toHaveAttribute('max', '10');
     });
 
     it('has proper image accessibility', () => {
