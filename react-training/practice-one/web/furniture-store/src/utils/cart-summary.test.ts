@@ -57,6 +57,21 @@ describe('calculateCartSummary', () => {
     expect(summary.shipping).toBe(0);
     expect(summary.total).toBe(500);
   });
+
+  it('should make shipping free when cent prices add up to exactly the threshold', () => {
+    // 17.58 + 130.14 + 352.28 is 499.99999999999994 in plain floating point
+    const summary = calculateCartSummary(
+      [createCartItem(1, 1), createCartItem(2, 1), createCartItem(3, 1)],
+      [
+        createProduct(1, 17.58),
+        createProduct(2, 130.14),
+        createProduct(3, 352.28),
+      ],
+    );
+
+    expect(summary.subtotal).toBe(500);
+    expect(summary.shipping).toBe(0);
+  });
 });
 
 describe('formatPrice', () => {

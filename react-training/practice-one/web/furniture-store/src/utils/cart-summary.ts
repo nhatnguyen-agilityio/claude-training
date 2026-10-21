@@ -6,12 +6,16 @@ export const calculateCartSummary = (
   cartItems: CartInterface[],
   products: ProductInterface[],
 ): CartSummaryInterface => {
-  const subtotal = cartItems.reduce((sum, cartItem) => {
+  // Add up in whole cents so floating-point drift can't push $500.00 below the threshold
+  const subtotalInCents = cartItems.reduce((sum, cartItem) => {
     const product = products.find(
       (product) => product.id === cartItem.item.productId,
     );
-    return sum + (product?.price ?? 0) * cartItem.item.quantity;
+    return (
+      sum + Math.round((product?.price ?? 0) * 100) * cartItem.item.quantity
+    );
   }, 0);
+  const subtotal = subtotalInCents / 100;
 
   const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
 

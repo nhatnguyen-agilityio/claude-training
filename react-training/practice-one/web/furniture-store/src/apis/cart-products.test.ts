@@ -2,6 +2,7 @@ import { createElement, type ReactNode } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useGetCartProducts } from './cart-products';
+import { QUERY_KEY } from '../constants/query-keys';
 
 jest.mock('../constants/api-routers', () => ({
   API_ROUTES: {
@@ -74,7 +75,7 @@ describe('useGetCartProducts', () => {
 
   it('should share the product detail cache when the product page already loaded it', async () => {
     const client = createQueryClient();
-    client.setQueryData(['product', '1'], createProduct(1));
+    client.setQueryData(QUERY_KEY.PRODUCT_DETAIL('1'), createProduct(1));
 
     const { result } = renderHook(() => useGetCartProducts([1]), {
       wrapper: createWrapper(client),
@@ -118,9 +119,9 @@ describe('useGetCartProducts', () => {
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(client.getQueryState(['product', '1'])?.error?.message).toBe(
-      'Product not found',
-    );
+    expect(
+      client.getQueryState(QUERY_KEY.PRODUCT_DETAIL('1'))?.error?.message,
+    ).toBe('Product not found');
   });
 
   it('should load the product when refetch is called after a failure', async () => {
