@@ -9,3 +9,9 @@ export interface CartInterface {
   userId: number;
   item: CartItemInterface;
 }
+
+export interface CartSummaryInterface {
+  subtotal: number;
+  shipping: number;
+  total: number;
+}

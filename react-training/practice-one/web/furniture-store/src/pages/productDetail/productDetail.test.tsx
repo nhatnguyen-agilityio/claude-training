@@ -188,7 +188,9 @@ const mockUseAddCart = jest.mocked(
 const mockGetMainCategories = jest.mocked(
   jest.requireMock('../../apis/main-categories').GetMainCategories,
 );
-const mockUseAuth = jest.mocked(jest.requireMock('../../hooks/useAuth').useAuth);
+const mockUseAuth = jest.mocked(
+  jest.requireMock('../../hooks/useAuth').useAuth,
+);
 const mockToast = jest.fn();
 
 const TestWrapper = ({ children }: { children: ReactNode }) => (
@@ -385,7 +387,9 @@ describe('ProductDetail Page', () => {
         </TestWrapper>,
       );
 
-      expect(screen.getByText('Free shipping included')).toBeInTheDocument();
+      expect(
+        screen.getByText('Free shipping on orders of $500.00 or more'),
+      ).toBeInTheDocument();
       expect(
         screen.getByText('Made from the best of materials sourced'),
       ).toBeInTheDocument();

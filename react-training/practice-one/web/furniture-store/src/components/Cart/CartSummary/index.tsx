@@ -3,11 +3,17 @@ import { FREE_SHIPPING_THRESHOLD } from '../../../constants/cart';
 import type { CartInterface } from '../../../interfaces/cart';
 import { calculateCartSummary, formatPrice } from '../../../utils/cart-summary';
 import { Skeleton } from '../../ui/skeleton';
+import Button from '../../common/Button';
 
 const CartSummary = ({ cartItems }: { cartItems: CartInterface[] }) => {
   const productIds = cartItems.map((cartItem) => cartItem.item.productId);
 
-  const { data: products, isPending, isError } = useGetCartProducts(productIds);
+  const {
+    data: products,
+    isPending,
+    isError,
+    refetch,
+  } = useGetCartProducts(productIds);
 
   if (isPending) {
     return (
@@ -21,9 +27,12 @@ const CartSummary = ({ cartItems }: { cartItems: CartInterface[] }) => {
 
   if (isError) {
     return (
-      <p className="w-full px-3 md:px-0 mb-20 text-sm text-red-500">
-        Failed to load order summary
-      </p>
+      <div className="w-full px-3 md:px-0 mb-20 flex items-center justify-between">
+        <p className="text-sm text-red-500">Failed to load order summary</p>
+        <Button variant="outline" size="sm" onClick={refetch}>
+          Try again
+        </Button>
+      </div>
     );
   }
 

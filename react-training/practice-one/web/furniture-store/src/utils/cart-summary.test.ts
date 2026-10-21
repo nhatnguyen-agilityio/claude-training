@@ -47,10 +47,28 @@ describe('calculateCartSummary', () => {
     expect(summary.shipping).toBe(0);
     expect(summary.total).toBe(600);
   });
+
+  it('should make shipping free when the subtotal is exactly the threshold', () => {
+    const summary = calculateCartSummary(
+      [createCartItem(1, 2)],
+      [createProduct(1, 250)],
+    );
+
+    expect(summary.shipping).toBe(0);
+    expect(summary.total).toBe(500);
+  });
 });
 
 describe('formatPrice', () => {
   it('should show two decimals when the price has cents', () => {
     expect(formatPrice(12.34)).toBe('$12.34');
+  });
+
+  it('should keep the trailing zero when the price has one decimal', () => {
+    expect(formatPrice(24.5)).toBe('$24.50');
+  });
+
+  it('should show two decimals when the price is a whole number', () => {
+    expect(formatPrice(25)).toBe('$25.00');
   });
 });
