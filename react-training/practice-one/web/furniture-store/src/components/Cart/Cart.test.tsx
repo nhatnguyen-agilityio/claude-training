@@ -76,6 +76,12 @@ jest.mock('./CartItem', () => {
   };
 });
 
+jest.mock('./CartSummary', () => {
+  return function MockCartSummary() {
+    return <div data-testid="cart-summary" />;
+  };
+});
+
 jest.mock('lucide-react', () => ({
   TriangleAlert: () => <div data-testid="triangle-alert-icon" />,
 }));

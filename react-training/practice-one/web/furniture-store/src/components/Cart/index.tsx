@@ -3,6 +3,7 @@ import Image from '../common/Image';
 import Button from '../common/Button';
 import { TriangleAlert } from 'lucide-react';
 import CartItem from './CartItem';
+import CartSummary from './CartSummary';
 import { useAuth } from '../../hooks/useAuth';
 import { useGetUserCart } from '../../apis/user-cart';
 import type { CartInterface } from '../../interfaces/cart';
@@ -96,6 +97,7 @@ const Cart = ({
                 {userCart.map((item: CartInterface) => (
                   <CartItem key={item.id} cartItem={item} />
                 ))}
+                <CartSummary cartItems={userCart} />
               </>
             ) : (
               <div className="mt-15 text-center text-2xl">
