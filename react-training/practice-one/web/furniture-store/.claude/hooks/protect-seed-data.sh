@@ -17,16 +17,25 @@ jq -e 'type == "object"' <<<"$input" >/dev/null 2>&1 \
 file=$(jq -r '.tool_input.file_path // .tool_input.notebook_path // .tool_response.filePath // empty' <<<"$input")
 [ -z "$file" ] && exit 0
 
-# Resolve relative paths, "..", "." and symlinks before comparing,
-# so "web/furniture-store/../../api/db.json" can't slip through.
-cwd=$(jq -r '.cwd // empty' <<<"$input" 2>/dev/null)
-real=$(cd "${cwd:-$PWD}" 2>/dev/null && python3 -I -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$file" 2>/dev/null) \
-  || block "the file path couldn't be resolved, so the edit can't be checked."
-
-case "$real" in
-  */practice-one/api/db.json)
-    block "api/db.json is shared seed data. Test against a copy of the API instead (see the fix-bug-from-report skill)."
-    ;;
+# Compare the target with the real seed file by identity, not by text:
+# resolves relative paths, "..", symlinks and hard links, and ignores letter
+# case (macOS paths are case-insensitive). The seed file is found relative to
+# this script: .claude/hooks -> web/furniture-store -> practice-one/api/db.json.
+cwd=$(jq -r '.cwd // empty' <<<"$input")
+verdict=$(cd "${cwd:-$PWD}" 2>/dev/null && python3 -I - "$file" "$(dirname "$0")" <<'PY' 2>/dev/null
+import os, sys
+target = os.path.realpath(sys.argv[1])
+seed = os.path.realpath(os.path.join(sys.argv[2], "..", "..", "..", "..", "api", "db.json"))
+same = False
+if os.path.exists(target) and os.path.exists(seed):
+    same = os.path.samefile(target, seed)
+if not same:
+    same = os.path.normcase(target).lower() == os.path.normcase(seed).lower()
+print("block" if same else "allow")
+PY
+)
+case "$verdict" in
+  block) block "api/db.json is shared seed data. Test against a copy of the API instead (see the fix-bug-from-report skill)." ;;
+  allow) exit 0 ;;
+  *) block "the file path couldn't be resolved, so the edit can't be checked." ;;
 esac
-
-exit 0
