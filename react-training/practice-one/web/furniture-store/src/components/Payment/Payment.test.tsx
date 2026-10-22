@@ -28,7 +28,8 @@ const mockCustomerInfo = {
   country: 'USA',
   cardNumber: '4111111111111111',
   cvv: '123',
-  expirationDate: '12/25',
+  // Must stay in the future, or the form rejects the card and never submits.
+  expirationDate: '12/30',
 };
 
 const mockUseAuth = {
@@ -349,6 +350,28 @@ describe('Payment Component', () => {
       onSuccessCallback();
 
       expect(mockOnNext).toHaveBeenCalled();
+    });
+
+    it('should save the order with the phone from the checkout step when the customer changes it', async () => {
+      const user = userEvent.setup();
+      mockLocalStorage.getItem.mockImplementation((key: string) =>
+        key === 'checkout'
+          ? JSON.stringify({ ...mockCustomerInfo, phoneNumber: '84900000111' })
+          : null,
+      );
+
+      render(
+        <TestWrapper>
+          <Payment onNext={mockOnNext} />
+        </TestWrapper>,
+      );
+
+      await user.click(screen.getByTestId('submit-button'));
+
+      expect(mockAddOrder).toHaveBeenCalledWith(
+        expect.objectContaining({ phoneNumber: '84900000111', userId: 1 }),
+        expect.anything(),
+      );
     });
 
     it('handles checkbox interactions', async () => {

@@ -22,6 +22,7 @@ import { useDeleteCart } from '../../apis/delete-cart';
 import { useGetPayment } from '../../apis/get-payment';
 import { useUpdatePayment } from '../../apis/update-payment';
 import { useUpdateStock } from '../../apis/update-stock';
+import { buildOrderPayload } from '../../utils/order-payload';
 
 const cardNumberCheck = (cardNumber: string) => {
   let sum = 0;
@@ -121,14 +122,19 @@ const Payment = ({ onNext }: { onNext: () => void }) => {
   const { data: payment } = useGetPayment(Number(user?.id), !!user?.id);
 
   const handleSubmit = (data: zodInfer<typeof paymentFormSchema>) => {
+    // Read the checkout step's details before anything below removes them
+    const checkoutInformation = localStorage.getItem('checkout');
+    const checkoutInfo = checkoutInformation
+      ? JSON.parse(checkoutInformation)
+      : null;
+
     if (data.rememberMe && user) {
       let paymentPayload = { ...customerInfo, ...data, userId: user.id };
 
-      const checkoutInformation = localStorage.getItem('checkout');
-      if (checkoutInformation) {
+      if (checkoutInfo) {
         paymentPayload = {
           ...paymentPayload,
-          ...JSON.parse(checkoutInformation),
+          ...checkoutInfo,
         };
       }
       if (payment && payment.length > 0) {
@@ -152,13 +158,13 @@ const Payment = ({ onNext }: { onNext: () => void }) => {
       localStorage.removeItem('checkout');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { id, ...customerPayload } = customerInfo || {};
-    const orderPayload = {
-      ...customerPayload,
+    const orderPayload = buildOrderPayload({
+      customerInfo,
+      checkoutInfo,
+      paymentForm: data,
       userId: user?.id,
       items: userCart?.flatMap((cart: CartInterface) => cart.item) || [],
-    };
+    });
     addOrder(orderPayload, {
       onSuccess: () => {
         // Update stock inventory by reducing stock for each ordered item
