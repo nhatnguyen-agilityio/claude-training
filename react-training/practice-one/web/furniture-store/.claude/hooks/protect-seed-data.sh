@@ -10,6 +10,11 @@ block() {
 }
 
 command -v jq >/dev/null 2>&1 || block "jq is not installed, so the edit can't be checked."
+command -v python3 >/dev/null 2>&1 || block "python3 is not installed, so the edit can't be checked."
+
+# Absolute folder of this script, resolved before any cd below
+hook_dir=$(cd "$(dirname "$0")" 2>/dev/null && pwd) \
+  || block "the hook's own folder couldn't be found, so the edit can't be checked."
 
 input=$(cat)
 jq -e 'type == "object"' <<<"$input" >/dev/null 2>&1 \
@@ -22,7 +27,7 @@ file=$(jq -r '.tool_input.file_path // .tool_input.notebook_path // .tool_respon
 # case (macOS paths are case-insensitive). The seed file is found relative to
 # this script: .claude/hooks -> web/furniture-store -> practice-one/api/db.json.
 cwd=$(jq -r '.cwd // empty' <<<"$input")
-verdict=$(cd "${cwd:-$PWD}" 2>/dev/null && python3 -I - "$file" "$(dirname "$0")" <<'PY' 2>/dev/null
+verdict=$(cd "${cwd:-$PWD}" 2>/dev/null && python3 -I - "$file" "$hook_dir" <<'PY' 2>/dev/null
 import os, sys
 target = os.path.realpath(sys.argv[1])
 seed = os.path.realpath(os.path.join(sys.argv[2], "..", "..", "..", "..", "api", "db.json"))
