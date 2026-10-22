@@ -210,7 +210,8 @@ describe('Payment Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockLocalStorage.getItem.mockClear();
+    // mockReset also drops implementations set by earlier tests
+    mockLocalStorage.getItem.mockReset();
     mockLocalStorage.setItem.mockClear();
   });
 
@@ -370,6 +371,44 @@ describe('Payment Component', () => {
 
       expect(mockAddOrder).toHaveBeenCalledWith(
         expect.objectContaining({ phoneNumber: '84900000111', userId: 1 }),
+        expect.anything(),
+      );
+    });
+
+    it('should remove the checkout details when the order succeeds', async () => {
+      const user = userEvent.setup();
+      mockLocalStorage.getItem.mockReturnValue(
+        JSON.stringify(mockCustomerInfo),
+      );
+
+      render(
+        <TestWrapper>
+          <Payment onNext={mockOnNext} />
+        </TestWrapper>,
+      );
+
+      await user.click(screen.getByTestId('submit-button'));
+      expect(mockLocalStorage.removeItem).not.toHaveBeenCalledWith('checkout');
+
+      mockAddOrder.mock.calls[0][1].onSuccess();
+
+      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('checkout');
+    });
+
+    it('should still place the order when the stored checkout details are corrupt', async () => {
+      const user = userEvent.setup();
+      mockLocalStorage.getItem.mockReturnValue('{"phoneNumber": "8490');
+
+      render(
+        <TestWrapper>
+          <Payment onNext={mockOnNext} />
+        </TestWrapper>,
+      );
+
+      await user.click(screen.getByTestId('submit-button'));
+
+      expect(mockAddOrder).toHaveBeenCalledWith(
+        expect.objectContaining({ phoneNumber: '1234567890', userId: 1 }),
         expect.anything(),
       );
     });

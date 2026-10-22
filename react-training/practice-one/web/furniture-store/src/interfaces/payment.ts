@@ -14,3 +14,12 @@ export interface PaymentInterface {
   useShippingAddress?: boolean;
   userId?: number;
 }
+
+export interface PaymentFormValuesInterface {
+  name: string;
+  cardNumber: string;
+  cvv: string;
+  expirationDate: string;
+  useShippingAddress: boolean;
+  rememberMe: boolean;
+}

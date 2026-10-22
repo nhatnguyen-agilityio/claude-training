@@ -22,7 +22,10 @@ import { useDeleteCart } from '../../apis/delete-cart';
 import { useGetPayment } from '../../apis/get-payment';
 import { useUpdatePayment } from '../../apis/update-payment';
 import { useUpdateStock } from '../../apis/update-stock';
-import { buildOrderPayload } from '../../utils/order-payload';
+import {
+  buildOrderPayload,
+  parseCheckoutInfo,
+} from '../../utils/order-payload';
 
 const cardNumberCheck = (cardNumber: string) => {
   let sum = 0;
@@ -122,21 +125,18 @@ const Payment = ({ onNext }: { onNext: () => void }) => {
   const { data: payment } = useGetPayment(Number(user?.id), !!user?.id);
 
   const handleSubmit = (data: zodInfer<typeof paymentFormSchema>) => {
-    // Read the checkout step's details before anything below removes them
-    const checkoutInformation = localStorage.getItem('checkout');
-    const checkoutInfo = checkoutInformation
-      ? JSON.parse(checkoutInformation)
-      : null;
+    // Details from the checkout step; null if missing or not valid JSON
+    const checkoutInfo = parseCheckoutInfo(localStorage.getItem('checkout'));
 
     if (data.rememberMe && user) {
-      let paymentPayload = { ...customerInfo, ...data, userId: user.id };
+      // Same precedence as the order: saved < checkout step < payment form
+      const paymentPayload = {
+        ...customerInfo,
+        ...(checkoutInfo ?? {}),
+        ...data,
+        userId: user.id,
+      };
 
-      if (checkoutInfo) {
-        paymentPayload = {
-          ...paymentPayload,
-          ...checkoutInfo,
-        };
-      }
       if (payment && payment.length > 0) {
         updatePayment(
           { paymentId: payment[0].id, paymentPayload },
@@ -155,7 +155,6 @@ const Payment = ({ onNext }: { onNext: () => void }) => {
           },
         });
       }
-      localStorage.removeItem('checkout');
     }
 
     const orderPayload = buildOrderPayload({
@@ -167,6 +166,9 @@ const Payment = ({ onNext }: { onNext: () => void }) => {
     });
     addOrder(orderPayload, {
       onSuccess: () => {
+        // The checkout details are used up: don't leave them in the browser
+        localStorage.removeItem('checkout');
+
         // Update stock inventory by reducing stock for each ordered item
         const stockUpdates =
           userCart?.flatMap((cart: CartInterface) => ({
