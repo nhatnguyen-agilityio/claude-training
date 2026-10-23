@@ -44,22 +44,40 @@ Customers place orders, but then they can't see them anywhere. v1 gives logged-i
 | 6 | Access | Login required, own orders only. |
 | 7 | Deadline | Demo on Fri 30 Oct 2026, core tickets first. |
 
+**Added after the dev Q&A on the tickets (#6–#13):**
+
+| Topic | Decision | Ticket |
+|---|---|---|
+| Saved price | `product.price` (what the customer pays). `basePrice` and `sale` are display-only. | #6 |
+| Shipping | Free from $500, otherwise $25, via `calculateCartSummary`. | #6 |
+| Checkout errors | Show an error when saving the order fails, and disable Pay while saving (no double charge). | #6 |
+| Item products | Reuse `useGetCartProducts`. The "own order" check is on the detail page, not in the hook. | #7, #9 |
+| Item count | Total quantity (2 chairs + 1 lamp = "3 items"). | #8 |
+| Dates | `Intl.DateTimeFormat`, e.g. "23 Sep 2025". No new package. | #8 |
+| List image | Each card shows the first item's image, or a placeholder. *(Lead's change.)* | #8 |
+| Old orders | Show only the fields that exist. Prices always come from the order, never from today's product. | #9 |
+| Badge colors | Processing amber, Shipped blue, Delivered green, Cancelled **red** *(lead's change)*. | #10 |
+| Login guard | The login drawer is opened from pages via a small context; auth gets an `isReady` flag. #11 is now **M** and starts early. | #11 |
+| Buy again | One add-to-cart call per item. Skip items with less stock than ordered. | #13 |
+
 ## 5. User stories and acceptance criteria
 
 **US1: See my orders.** As a logged-in customer, I want a list of my orders so I can find something I bought.
-- Given I have orders, when I open `/orders`, then I see my 10 newest orders with number, date, item count, total (or "—") and status badge (or none).
+- Given I have orders, when I open `/orders`, then I see my 10 newest orders with number, date, item count (total quantity), total (or "—") and status badge (or none).
+- Each card shows the first item's image, or a placeholder if that product is unavailable.
 - Given I have more than 10 orders, when I click "Show more", then the next 10 load.
 - Given I have no orders, then I see an empty state with "Start shopping".
 - Given loading or an error, then I see a skeleton, or an error message with "Try again".
 
 **US2: See one order.** As a logged-in customer, I want to open an order and see everything about it.
 - Given my order, when I open `/orders/:id`, then I see the items (image, name, color/size, quantity, price), shipping address and contact, "Card ending 1234", and subtotal / shipping / total.
-- Given an old order, then prices and totals show "—".
+- Given an old order, then prices and totals show "—", and only the contact and address fields that exist are shown. Prices always come from the order.
+- Given an item whose product no longer exists, then it shows "Product unavailable" and the page still loads.
 - Given someone else's order or a missing id, then I see Not Found.
 - The full card number and CVV are never shown.
 
 **US3: Know the status.** As a customer, I want a clear status label so I know what is happening.
-- Each of the 4 statuses has its own label and color. No status means no badge.
+- Processing amber, Shipped blue, Delivered green, Cancelled red. No status means no badge.
 
 **US4: Reach it easily, keep it private.**
 - "My Orders" is in the user menu on desktop and mobile. The order confirmation has a "View my orders" button.
@@ -74,9 +92,9 @@ Customers place orders, but then they can't see them anywhere. v1 gives logged-i
 ```
 My Orders
 ┌───────────────────────────────────────────────────────────┐
-│ Order #31     23 Sep 2025     3 items     $412.00  [Processing] › │
+│ [img] Order #31   23 Sep 2025   3 items   $412.00  [Processing] › │
 ├───────────────────────────────────────────────────────────┤
-│ Order #24     12 Sep 2025     1 item      —                  › │
+│ [img] Order #24   12 Sep 2025   1 item    —                  › │
 └───────────────────────────────────────────────────────────┘
                      [ Show more ]
 ```
@@ -85,7 +103,7 @@ My Orders
 ```
 My Orders
 ┌─────────────────────────┐
-│ Order #31   [Processing] │
+│ [img] Order #31  [Processing] │
 │ 23 Sep 2025 · 3 items    │
 │ $412.00               › │
 └─────────────────────────┘
@@ -130,6 +148,7 @@ On mobile, the sections stack and each item row wraps under its image.
 
 - The API has no auth, so the UI must hide other users' orders. A real backend check is a follow-up.
 - 11 old seed orders contain full card numbers and CVV. Never render them. Show only `cardLast4`, when it exists.
+- `GET /orders/:id` still sends those card fields to the browser. Stripping them on the server is a high-priority follow-up right after the demo.
 
 ## 10. Risks
 
@@ -146,8 +165,15 @@ On mobile, the sections stack and each item row wraps under its image.
 | #8 | My Orders list page (/orders) | M | #7, #10 |
 | #9 | Order detail page (/orders/:id) | M | #7, #10 |
 | #10 | StatusBadge common component | S | — |
-| #11 | My Orders navigation and login guard | S | #8 |
+| #11 | My Orders navigation and login guard | M (was S) | — (start early) |
 | #12 | QA: My Orders end-to-end on desktop and mobile | S | #6–#11 |
 | #13 | Stretch: "Buy again" on order detail | S | #9 |
 
-**Suggested order:** #6 and #10 in parallel → #7 → #8 and #9 → #11 → #12 → #13 if time allows.
+**Suggested order:** #6, #10 and #11 in parallel → #7 → #8 and #9 → #12 → #13 if time allows (after the add-to-cart stock bugfix).
+
+**Follow-up tickets agreed in the dev Q&A (to open, linked to #5):**
+- Silent stock-update and cart-clear failures after checkout.
+- Strip card number and CVV from order responses (high priority after the demo).
+- Add-to-cart doesn't check stock for a new cart row (do before #13).
+- Login "remember me" doesn't work (after the demo).
+- `removeCustomerInfo` clears the wrong storage key.
