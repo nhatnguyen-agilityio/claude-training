@@ -39,7 +39,7 @@ const CartItem = ({ cartItem }: { cartItem: CartInterface }) => {
       const cartVariant = productDetail?.variants.find(
         (variant: ProductVariant) => variant.id === variantId,
       );
-      const maxStock = cartVariant?.stock || 100;
+      const maxStock = cartVariant?.stock ?? 100;
       const newQuantity = numValue > maxStock ? maxStock : numValue;
 
       setQuantityValue(newQuantity);
@@ -112,6 +112,8 @@ const CartItem = ({ cartItem }: { cartItem: CartInterface }) => {
     (variant: ProductVariant) => variant.id === variantId,
   );
 
+  const isOutOfStock = cartVariant?.stock === 0;
+
   return (
     <div className="ml-3 mr-4 flex justify-between mb-10 pb-10 border-b-1 border-gray-300 w-full px-3 md:px-0">
       <div className="flex">
@@ -145,11 +147,15 @@ const CartItem = ({ cartItem }: { cartItem: CartInterface }) => {
         <p className="text-app-primary font-semibold text-sm md:text:lg lg:text-xl">
           {`$${(productDetail.price * cartItem.item.quantity).toFixed(2)}`}
         </p>
+        {isOutOfStock && (
+          <p className="text-sm font-medium text-red-600">Out of stock</p>
+        )}
         <div className="h-12 w-12 mr-4 lg:mr-0 flex items-end">
           <Input
             type="number"
             min={1}
-            max={cartVariant?.stock || 100}
+            max={cartVariant?.stock ?? 100}
+            disabled={isOutOfStock}
             value={quantityValue}
             onChange={handleChangeQuantity}
             onBlur={handleBlur}

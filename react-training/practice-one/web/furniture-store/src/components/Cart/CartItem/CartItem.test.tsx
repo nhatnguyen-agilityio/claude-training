@@ -446,6 +446,32 @@ describe('CartItem Component', () => {
     });
   });
 
+  describe('Sold-out variant', () => {
+    it('disables the quantity input and shows Out of stock when stock is 0', async () => {
+      mockUseGetProductDetail.mockReturnValue({
+        data: {
+          ...mockProductDetail,
+          variants: [{ ...mockProductDetail.variants[0], stock: 0 }],
+        },
+        isPending: false,
+        isError: false,
+      });
+
+      await act(async () => {
+        render(
+          <TestQueryClient>
+            <CartItem cartItem={mockCartItem} />
+          </TestQueryClient>,
+        );
+      });
+
+      const quantityInput = screen.getByTestId('quantity-input');
+      expect(quantityInput).toBeDisabled();
+      expect(quantityInput).toHaveAttribute('max', '0');
+      expect(screen.getByText('Out of stock')).toBeInTheDocument();
+    });
+  });
+
   describe('Variant Handling', () => {
     it('uses correct variant image when variant exists', async () => {
       await act(async () => {
