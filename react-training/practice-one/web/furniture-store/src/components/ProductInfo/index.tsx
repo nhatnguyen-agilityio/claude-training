@@ -89,7 +89,7 @@ const ProductInfo = ({
     const numValue = Number(inputValue);
     if (isNaN(numValue)) return;
 
-    const maxStock = variants[selected]?.stock || 100;
+    const maxStock = variants[selected]?.stock ?? 100;
     const newQuantity = numValue > maxStock ? maxStock : numValue;
     setQuantity(newQuantity);
   };
@@ -157,7 +157,8 @@ const ProductInfo = ({
             aria-label="Quantity"
             type="number"
             min={1}
-            max={variants[selected]?.stock || 100}
+            max={variants[selected]?.stock ?? 100}
+            disabled={isOutOfStock}
             value={quantity}
             onChange={handleQuantityChange}
             onBlur={handleQuantityBlur}
