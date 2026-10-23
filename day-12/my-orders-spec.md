@@ -169,11 +169,11 @@ On mobile, the sections stack and each item row wraps under its image.
 | #12 | QA: My Orders end-to-end on desktop and mobile | S | #6–#11 |
 | #13 | Stretch: "Buy again" on order detail | S | #9 |
 
-**Suggested order:** #6, #10 and #11 in parallel → #7 → #8 and #9 → #12 → #13 if time allows (after the add-to-cart stock bugfix).
+**Suggested order:** #6, #10 and #11 in parallel → #7 → #8 and #9 → #12 → #13 if time allows (after the add-to-cart stock bugfix #16).
 
-**Follow-up tickets agreed in the dev Q&A (to open, linked to #5):**
-- Silent stock-update and cart-clear failures after checkout.
-- Strip card number and CVV from order responses (high priority after the demo).
-- Add-to-cart doesn't check stock for a new cart row (do before #13).
-- Login "remember me" doesn't work (after the demo).
-- `removeCustomerInfo` clears the wrong storage key.
+**Follow-up tickets agreed in the dev Q&A (child tasks of #5):**
+- #14: Silent stock-update and cart-clear failures after checkout.
+- #15: Strip card number and CVV from order responses (high priority after the demo).
+- #16: Add-to-cart doesn't check stock for a new cart row (do before #13).
+- #17: Login "remember me" doesn't work (after the demo).
+- #18: `removeCustomerInfo` clears the wrong storage key.
