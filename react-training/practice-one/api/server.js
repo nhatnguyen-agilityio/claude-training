@@ -1,8 +1,10 @@
 // server.js
+const path = require("path");
 const jsonServer = require("json-server");
 
 const server = jsonServer.create();
-const router = jsonServer.router("db.json");
+// DB_FILE lets tests point the server at a temporary copy of db.json
+const router = jsonServer.router(process.env.DB_FILE || path.join(__dirname, "db.json"));
 const middlewares = jsonServer.defaults();
 
 const PORT = process.env.PORT || 5001;
@@ -360,6 +362,11 @@ server.get("/products/with-stock", (req, res) => {
 
 server.use(router);
 
-server.listen(PORT, () => {
-    console.log(`✅ JSON Server is running on port ${PORT}`);
-});
+// Only listen when run directly (node server.js), not when imported by tests
+if (require.main === module) {
+    server.listen(PORT, () => {
+        console.log(`✅ JSON Server is running on port ${PORT}`);
+    });
+}
+
+module.exports = { server, router };
