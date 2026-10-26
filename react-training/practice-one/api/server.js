@@ -121,6 +121,10 @@ server.post("/carts/add-to-cart", (req, res) => {
         return res.status(400).json({ error: "Missing required fields" });
     }
 
+    if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+        return res.status(400).json({ error: "Quantity must be a positive whole number" });
+    }
+
     // Check if cart already exists
     const existingCart = db
         .get("carts")
