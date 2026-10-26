@@ -4,7 +4,7 @@ import type { PaymentInterface } from '../interfaces/payment';
 
 export type AuthContextType = {
   user: UserStoreInterface | null;
-  setUser: (user: UserStoreInterface | null) => void;
+  setUser: (user: UserStoreInterface | null, remember?: boolean) => void;
   logout: () => void;
   setCustomerInfo: (customerInfo: PaymentInterface) => void;
   removeCustomerInfo: () => void;
