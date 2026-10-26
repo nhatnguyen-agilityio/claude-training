@@ -200,8 +200,10 @@ describe('Login Component', () => {
         </TestWrapper>,
       );
 
-      // The component renders an empty div in this test scenario
-      expect(document.body.innerHTML).toBe('<div></div>');
+      expect(screen.getByPlaceholderText('Username')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Password')).toBeInTheDocument();
+      expect(screen.getByText('Forgot password?')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument();
     });
 
     it('renders the logo image', () => {
