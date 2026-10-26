@@ -99,6 +99,12 @@ const TestComponent = () => {
       >
         Set User
       </button>
+      <button
+        data-testid="set-user-remembered"
+        onClick={() => setUser({ id: 1, username: 'testuser' }, true)}
+      >
+        Set Remembered User
+      </button>
       <button data-testid="clear-user" onClick={() => setUser(null)}>
         Clear User
       </button>
@@ -296,6 +302,67 @@ describe('AuthProvider', () => {
       await user.click(logoutButton);
 
       expect(screen.getByTestId('user-display')).toHaveTextContent('No user');
+      expect(sessionStorage.getItem('authUser')).toBeNull();
+    });
+  });
+
+  describe('Remember Me', () => {
+    const storedUser = JSON.stringify({ id: 1, username: 'testuser' });
+
+    it('should store user in localStorage only when remember me is ticked', async () => {
+      const user = userEvent.setup();
+      mockUseGetPayment.mockReturnValue(createMockQueryResult());
+
+      renderAuthProvider();
+      sessionStorage.setItem('authUser', storedUser);
+      await user.click(screen.getByTestId('set-user-remembered'));
+
+      expect(localStorage.getItem('authUser')).toBe(storedUser);
+      expect(sessionStorage.getItem('authUser')).toBeNull();
+    });
+
+    it('should store user in sessionStorage only when remember me is unticked', async () => {
+      const user = userEvent.setup();
+      mockUseGetPayment.mockReturnValue(createMockQueryResult());
+
+      renderAuthProvider();
+      localStorage.setItem('authUser', storedUser);
+      await user.click(screen.getByTestId('set-user'));
+
+      expect(sessionStorage.getItem('authUser')).toBe(storedUser);
+      expect(localStorage.getItem('authUser')).toBeNull();
+    });
+
+    it('should clear user from both storages when logging out', async () => {
+      const user = userEvent.setup();
+      mockUseGetPayment.mockReturnValue(createMockQueryResult());
+
+      renderAuthProvider();
+      await user.click(screen.getByTestId('set-user-remembered'));
+      sessionStorage.setItem('authUser', storedUser);
+      await user.click(screen.getByTestId('logout'));
+
+      expect(screen.getByTestId('user-display')).toHaveTextContent('No user');
+      expect(localStorage.getItem('authUser')).toBeNull();
+      expect(sessionStorage.getItem('authUser')).toBeNull();
+    });
+
+    it('should restore user and keep it in localStorage when reloading a remembered session', async () => {
+      mockUseGetPayment.mockReturnValue(createMockQueryResult());
+      localStorage.setItem('authUser', storedUser);
+
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('user-display')).toHaveTextContent(
+          'testuser (1)',
+        );
+      });
+      expect(localStorage.getItem('authUser')).toBe(storedUser);
       expect(sessionStorage.getItem('authUser')).toBeNull();
     });
   });
