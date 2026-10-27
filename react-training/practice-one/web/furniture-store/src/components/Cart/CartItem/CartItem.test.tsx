@@ -375,6 +375,60 @@ describe('CartItem Component', () => {
       });
     });
 
+    it('should save a whole quantity when the user types a decimal', async () => {
+      await act(async () => {
+        render(
+          <TestQueryClient>
+            <CartItem cartItem={mockCartItem} />
+          </TestQueryClient>,
+        );
+      });
+
+      const quantityInput = await screen.findByDisplayValue('2');
+      fireEvent.change(quantityInput, { target: { value: '1.5' } });
+
+      expect(mockMutate).toHaveBeenCalledTimes(1);
+      expect(mockMutate.mock.calls[0][0].cartPayload.item.quantity).toBe(1);
+      expect(screen.getByDisplayValue('1')).toBeInTheDocument();
+    });
+
+    it('should never send a decimal quantity when the user types 1.5 key by key', async () => {
+      const user = userEvent.setup();
+
+      await act(async () => {
+        render(
+          <TestQueryClient>
+            <CartItem cartItem={mockCartItem} />
+          </TestQueryClient>,
+        );
+      });
+
+      const quantityInput = await screen.findByDisplayValue('2');
+      await user.clear(quantityInput);
+      await user.type(quantityInput, '1.5');
+
+      const sentQuantities = mockMutate.mock.calls.map(
+        ([args]) => args.cartPayload.item.quantity,
+      );
+      expect(sentQuantities.length).toBeGreaterThan(0);
+      expect(sentQuantities.every(Number.isInteger)).toBe(true);
+    });
+
+    it('should not save a quantity when a decimal rounds down to zero', async () => {
+      await act(async () => {
+        render(
+          <TestQueryClient>
+            <CartItem cartItem={mockCartItem} />
+          </TestQueryClient>,
+        );
+      });
+
+      const quantityInput = await screen.findByDisplayValue('2');
+      fireEvent.change(quantityInput, { target: { value: '0.5' } });
+
+      expect(mockMutate).not.toHaveBeenCalled();
+    });
+
     it('updates price when quantity changes', async () => {
       const cartItemWithQuantity3: CartInterface = {
         id: 1,
