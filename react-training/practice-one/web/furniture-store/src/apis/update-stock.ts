@@ -3,6 +3,7 @@ import { API_ENDPOINT } from '../constants/env-variables';
 import { API_ROUTES } from '../constants/api-routers';
 
 export interface StockUpdateInterface {
+  productId: number;
   variantId: number;
   quantity: number;
 }

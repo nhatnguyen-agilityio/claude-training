@@ -47,6 +47,7 @@ const mockAddPayment = jest.fn();
 const mockUpdatePayment = jest.fn();
 const mockAddOrder = jest.fn();
 const mockDeleteCart = jest.fn();
+const mockUpdateStock = jest.fn();
 
 jest.mock('../../apis/add-payment', () => ({
   useAddPayment: () => ({ mutate: mockAddPayment }),
@@ -58,6 +59,10 @@ jest.mock('../../apis/update-payment', () => ({
 
 jest.mock('../../apis/add-order', () => ({
   useAddOrder: () => ({ mutate: mockAddOrder }),
+}));
+
+jest.mock('../../apis/update-stock', () => ({
+  useUpdateStock: () => ({ mutate: mockUpdateStock }),
 }));
 
 jest.mock('../../apis/delete-cart', () => ({
@@ -393,6 +398,26 @@ describe('Payment Component', () => {
       mockAddOrder.mock.calls[0][1].onSuccess();
 
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('checkout');
+    });
+
+    it('should send productId with each stock update when the order succeeds', async () => {
+      const user = userEvent.setup();
+      mockLocalStorage.getItem.mockReturnValue(
+        JSON.stringify(mockCustomerInfo),
+      );
+
+      render(
+        <TestWrapper>
+          <Payment onNext={mockOnNext} />
+        </TestWrapper>,
+      );
+
+      await user.click(screen.getByTestId('submit-button'));
+      mockAddOrder.mock.calls[0][1].onSuccess();
+
+      expect(mockUpdateStock).toHaveBeenCalledWith({
+        items: [{ productId: 1, variantId: 101, quantity: 2 }],
+      });
     });
 
     it('should still place the order when the stored checkout details are corrupt', async () => {

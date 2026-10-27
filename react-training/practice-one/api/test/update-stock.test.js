@@ -1,0 +1,198 @@
+// Tests for PATCH /products/update-stock. Each test runs against its own
+// temporary copy of db.json, so the real seed data is never touched.
+const { describe, it, beforeEach, afterEach } = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+
+const SERVER_PATH = path.join(__dirname, "..", "server.js");
+const SEED_DB = path.join(__dirname, "..", "db.json");
+
+const STOCK = 5;
+const OTHER_STOCK = 7;
+const SECOND_VARIANT_STOCK = 4;
+const MISSING_ID = 999999;
+
+let tmpDir;
+let httpServer;
+let baseUrl;
+let productId;
+let otherProductId;
+let variantId;
+let secondVariantId;
+
+const updateStock = async (items) => {
+    const res = await fetch(`${baseUrl}/products/update-stock`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+    });
+    return { status: res.status, body: await res.json() };
+};
+
+const getStock = async (pId, vId) => {
+    const res = await fetch(`${baseUrl}/products/${pId}`);
+    const product = await res.json();
+    return product.variants.find((v) => v.id === vId).stock;
+};
+
+beforeEach(async () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "api-test-"));
+    const dbFile = path.join(tmpDir, "db.json");
+
+    // Pick two products that share a variant id and set known stock, in the copy only
+    const db = JSON.parse(fs.readFileSync(SEED_DB, "utf8"));
+    const product = db.products[0];
+    const otherProduct = db.products.find(
+        (p) => p.id !== product.id && p.variants.some((v) => v.id === product.variants[0].id)
+    );
+    productId = product.id;
+    otherProductId = otherProduct.id;
+    variantId = product.variants[0].id;
+    secondVariantId = product.variants[1].id;
+    product.variants[0].stock = STOCK;
+    product.variants[1].stock = SECOND_VARIANT_STOCK;
+    otherProduct.variants.find((v) => v.id === variantId).stock = OTHER_STOCK;
+    fs.writeFileSync(dbFile, JSON.stringify(db));
+
+    // Load a fresh server so its router reads this test's copy
+    process.env.DB_FILE = dbFile;
+    delete require.cache[require.resolve(SERVER_PATH)];
+    const { server } = require(SERVER_PATH);
+
+    await new Promise((resolve) => {
+        httpServer = server.listen(0, resolve);
+    });
+    baseUrl = `http://localhost:${httpServer.address().port}`;
+});
+
+afterEach(async () => {
+    await new Promise((resolve) => httpServer.close(resolve));
+    delete process.env.DB_FILE;
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+describe("PATCH /products/update-stock", () => {
+    it("should deduct only the requested product when the quantity fits the stock", async () => {
+        const { status, body } = await updateStock([{ productId, variantId, quantity: 2 }]);
+
+        assert.equal(status, 200);
+        assert.equal(body.success, true);
+        assert.equal(await getStock(productId, variantId), STOCK - 2);
+    });
+
+    it("should leave another product untouched when it shares the same variant id", async () => {
+        await updateStock([{ productId, variantId, quantity: 2 }]);
+
+        assert.equal(await getStock(otherProductId, variantId), OTHER_STOCK);
+    });
+
+    it("should deduct the second product when the request names it", async () => {
+        await updateStock([{ productId: otherProductId, variantId, quantity: 3 }]);
+
+        assert.equal(await getStock(otherProductId, variantId), OTHER_STOCK - 3);
+        assert.equal(await getStock(productId, variantId), STOCK);
+    });
+
+    it("should return previousStock and newStock when the stock is deducted", async () => {
+        const { body } = await updateStock([{ productId, variantId, quantity: 2 }]);
+
+        assert.deepEqual(body.updated, [
+            { productId, variantId, previousStock: STOCK, newStock: STOCK - 2, quantityDeducted: 2 },
+        ]);
+    });
+
+    it("should return 400 and change nothing when the stock is short", async () => {
+        const { status, body } = await updateStock([{ productId, variantId, quantity: STOCK + 1 }]);
+
+        assert.equal(status, 400);
+        assert.equal(body.success, false);
+        assert.equal(body.errors[0].error, "Insufficient stock");
+        assert.equal(await getStock(productId, variantId), STOCK);
+        assert.equal(await getStock(otherProductId, variantId), OTHER_STOCK);
+    });
+
+    it("should not fall back to another product when the requested one is short of stock", async () => {
+        // The other product has enough stock, but only the named product counts
+        const { status } = await updateStock([{ productId, variantId, quantity: OTHER_STOCK }]);
+
+        assert.equal(status, 400);
+        assert.equal(await getStock(otherProductId, variantId), OTHER_STOCK);
+    });
+
+    it("should return 400 and not deduct the good item when another item in the batch is bad", async () => {
+        const { status, body } = await updateStock([
+            { productId, variantId, quantity: 1 },
+            { productId, variantId: secondVariantId, quantity: SECOND_VARIANT_STOCK + 1 },
+        ]);
+
+        assert.equal(status, 400);
+        assert.equal(body.success, false);
+        assert.equal(body.errors.length, 1);
+        assert.equal(await getStock(productId, variantId), STOCK);
+        assert.equal(await getStock(productId, secondVariantId), SECOND_VARIANT_STOCK);
+    });
+
+    it("should sum the quantities and return 400 when the same item repeats beyond the stock", async () => {
+        const { status } = await updateStock([
+            { productId, variantId, quantity: STOCK - 1 },
+            { productId, variantId, quantity: 2 },
+        ]);
+
+        assert.equal(status, 400);
+        assert.equal(await getStock(productId, variantId), STOCK);
+    });
+
+    it("should deduct the summed quantity once when the same item repeats within the stock", async () => {
+        const { status, body } = await updateStock([
+            { productId, variantId, quantity: 1 },
+            { productId, variantId, quantity: 2 },
+        ]);
+
+        assert.equal(status, 200);
+        assert.equal(body.updated.length, 1);
+        assert.equal(body.updated[0].quantityDeducted, 3);
+        assert.equal(await getStock(productId, variantId), STOCK - 3);
+    });
+
+    for (const [label, quantity] of [
+        ["zero", 0],
+        ["negative", -1],
+        ["a decimal", 2.5],
+        ["a string", "2"],
+    ]) {
+        it(`should return 400 and change nothing when the quantity is ${label}`, async () => {
+            const { status, body } = await updateStock([{ productId, variantId, quantity }]);
+
+            assert.equal(status, 400);
+            assert.equal(body.success, false);
+            assert.equal(await getStock(productId, variantId), STOCK);
+        });
+    }
+
+    it("should return 400 when productId is missing", async () => {
+        const { status, body } = await updateStock([{ variantId, quantity: 1 }]);
+
+        assert.equal(status, 400);
+        assert.equal(body.success, false);
+        assert.equal(await getStock(productId, variantId), STOCK);
+        assert.equal(await getStock(otherProductId, variantId), OTHER_STOCK);
+    });
+
+    it("should return 400 and change nothing when the product does not exist", async () => {
+        const { status, body } = await updateStock([{ productId: MISSING_ID, variantId, quantity: 1 }]);
+
+        assert.equal(status, 400);
+        assert.equal(body.errors[0].error, "Product not found");
+        assert.equal(await getStock(productId, variantId), STOCK);
+        assert.equal(await getStock(otherProductId, variantId), OTHER_STOCK);
+    });
+
+    it("should return 400 when the variant does not exist in the product", async () => {
+        const { status, body } = await updateStock([{ productId, variantId: MISSING_ID, quantity: 1 }]);
+
+        assert.equal(status, 400);
+        assert.equal(body.errors[0].error, "Product variant not found");
+    });
+});

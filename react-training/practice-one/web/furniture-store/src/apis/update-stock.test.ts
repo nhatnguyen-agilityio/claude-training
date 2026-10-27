@@ -45,8 +45,8 @@ describe('useUpdateStock', () => {
 
     const stockPayload: StockUpdatePayloadInterface = {
       items: [
-        { variantId: 1, quantity: 2 },
-        { variantId: 2, quantity: 1 },
+        { productId: 1, variantId: 101, quantity: 2 },
+        { productId: 8, variantId: 101, quantity: 1 },
       ],
     };
 
@@ -72,6 +72,12 @@ describe('useUpdateStock', () => {
         body: JSON.stringify(stockPayload),
       },
     );
+    expect(JSON.parse(mockFetch.mock.calls[0][1]!.body as string)).toEqual({
+      items: [
+        { productId: 1, variantId: 101, quantity: 2 },
+        { productId: 8, variantId: 101, quantity: 1 },
+      ],
+    });
   });
 
   it('should handle update stock error', async () => {
@@ -82,7 +88,7 @@ describe('useUpdateStock', () => {
     } as Response);
 
     const stockPayload: StockUpdatePayloadInterface = {
-      items: [{ variantId: 1, quantity: 10 }],
+      items: [{ productId: 1, variantId: 1, quantity: 10 }],
     };
 
     const { result } = renderHook(() => useUpdateStock(), {
@@ -103,7 +109,7 @@ describe('useUpdateStock', () => {
     } as Response);
 
     const stockPayload: StockUpdatePayloadInterface = {
-      items: [{ variantId: 1, quantity: 1 }],
+      items: [{ productId: 1, variantId: 1, quantity: 1 }],
     };
 
     const { result } = renderHook(() => useUpdateStock(), {
@@ -174,7 +180,7 @@ describe('useUpdateStock', () => {
     };
 
     const stockPayload: StockUpdatePayloadInterface = {
-      items: [{ variantId: 1, quantity: 2 }],
+      items: [{ productId: 1, variantId: 1, quantity: 2 }],
     };
 
     const { result } = renderHook(() => useUpdateStock(), {

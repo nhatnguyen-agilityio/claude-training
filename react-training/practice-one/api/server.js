@@ -185,91 +185,77 @@ server.patch("/products/update-stock", (req, res) => {
         return res.status(400).json({ error: "Items array is required" });
     }
 
-    const updateResults = [];
     const errors = [];
+    // Total requested per product + variant, so duplicates are checked together
+    const requested = new Map();
 
-    // Process each item update
-    for (const updateItem of items) {
-        const { variantId, quantity } = updateItem;
+    // Validate every item first: nothing is written unless all of them pass
+    items.forEach((updateItem, index) => {
+        const { productId, variantId, quantity } = updateItem || {};
 
-        if (!variantId || !quantity || quantity <= 0) {
-            errors.push({
-                variantId,
-                error: "Invalid variantId or quantity"
-            });
-            continue;
+        if (!productId || !variantId || quantity === undefined || quantity === null) {
+            errors.push({ index, productId, variantId, error: "Missing required fields" });
+            return;
         }
 
-        try {
-            // Find the product containing this variant
-            const products = db.get("products").value();
-            let productFound = false;
-            let variantFound = false;
+        if (!Number.isInteger(quantity) || quantity <= 0) {
+            errors.push({ index, productId, variantId, error: "Quantity must be a positive whole number" });
+            return;
+        }
 
-            for (const product of products) {
-                const variantIndex = product.variants.findIndex(v => v.id === variantId);
+        const product = db.get("products").find({ id: productId }).value();
+        const variant = product && product.variants
+            ? product.variants.find(v => v.id === variantId)
+            : undefined;
 
-                if (variantIndex !== -1) {
-                    const variant = product.variants[variantIndex];
-                    productFound = true;
-                    variantFound = true;
+        if (!product) {
+            errors.push({ index, productId, variantId, error: "Product not found" });
+            return;
+        }
 
-                    // Check if enough stock available
-                    if (variant.stock < quantity) {
-                        errors.push({
-                            variantId,
-                            error: "Insufficient stock",
-                            available: variant.stock,
-                            requested: quantity
-                        });
-                        continue;
-                    }
+        if (!variant) {
+            errors.push({ index, productId, variantId, error: "Product variant not found" });
+            return;
+        }
 
-                    // Update stock
-                    const newStock = variant.stock - quantity;
+        const key = `${productId}:${variantId}`;
+        const total = (requested.get(key) || 0) + quantity;
+        requested.set(key, total);
 
-                    // Update the variant in database
-                    db.get("products")
-                        .find({ id: product.id })
-                        .get("variants")
-                        .find({ id: variantId })
-                        .assign({ stock: newStock })
-                        .write();
-
-                    updateResults.push({
-                        variantId,
-                        previousStock: variant.stock,
-                        newStock,
-                        quantityDeducted: quantity
-                    });
-
-                    break;
-                }
-            }
-
-            if (!productFound || !variantFound) {
-                errors.push({
-                    variantId,
-                    error: "Product variant not found"
-                });
-            }
-        } catch (error) {
+        if (total > variant.stock) {
             errors.push({
+                index,
+                productId,
                 variantId,
-                error: "Failed to update stock: " + error.message
+                error: "Insufficient stock",
+                available: variant.stock,
+                requested: total
             });
         }
+    });
+
+    if (errors.length > 0) {
+        return res.status(400).json({ success: false, errors });
     }
 
-    // Return results
-    const response = {
-        success: updateResults.length > 0,
-        updated: updateResults,
-        errors: errors.length > 0 ? errors : undefined
-    };
+    // Everything is valid: deduct once per product + variant
+    const updated = [];
+    for (const [key, quantityDeducted] of requested) {
+        const [productId, variantId] = key.split(":").map(Number);
+        const variant = db
+            .get("products")
+            .find({ id: productId })
+            .get("variants")
+            .find({ id: variantId });
+        const previousStock = variant.value().stock;
+        const newStock = previousStock - quantityDeducted;
 
-    const statusCode = errors.length > 0 && updateResults.length === 0 ? 400 : 200;
-    return res.status(statusCode).json(response);
+        variant.assign({ stock: newStock }).write();
+
+        updated.push({ productId, variantId, previousStock, newStock, quantityDeducted });
+    }
+
+    return res.status(200).json({ success: true, updated });
 });
 
 // Custom API endpoint to get products with stock > 0

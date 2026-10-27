@@ -172,6 +172,7 @@ const Payment = ({ onNext }: { onNext: () => void }) => {
         // Update stock inventory by reducing stock for each ordered item
         const stockUpdates =
           userCart?.flatMap((cart: CartInterface) => ({
+            productId: cart.item.productId,
             variantId: cart.item.variantId,
             quantity: cart.item.quantity,
           })) || [];
