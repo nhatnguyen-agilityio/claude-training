@@ -12,10 +12,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { data: payment } = useGetPayment(Number(user?.id), !!user?.id);
 
   useEffect(() => {
-    const savedUser =
-      localStorage.getItem('authUser') || sessionStorage.getItem('authUser');
+    const rememberedUser = localStorage.getItem('authUser');
+    const savedUser = rememberedUser || sessionStorage.getItem('authUser');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      // Keep a remembered user in localStorage so they survive the next restart
+      setUser(JSON.parse(savedUser), !!rememberedUser);
     }
 
     const savedCustomerInfo = localStorage.getItem('customerInfo');
@@ -26,10 +27,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [payment]);
 
-  const setUser = (user: UserStoreInterface | null) => {
+  const setUser = (user: UserStoreInterface | null, remember = false) => {
     if (user) {
-      sessionStorage.setItem('authUser', JSON.stringify(user));
+      const storage = remember ? localStorage : sessionStorage;
+      const otherStorage = remember ? sessionStorage : localStorage;
+      // Persist only what's needed to restore the session, not personal data
+      const { id, username } = user;
+      storage.setItem('authUser', JSON.stringify({ id, username }));
+      otherStorage.removeItem('authUser');
     } else {
+      localStorage.removeItem('authUser');
       sessionStorage.removeItem('authUser');
     }
     setUserData(user);
@@ -37,7 +44,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setUser(null);
-    sessionStorage.removeItem('authUser');
     localStorage.removeItem('customerInfo');
   };
 

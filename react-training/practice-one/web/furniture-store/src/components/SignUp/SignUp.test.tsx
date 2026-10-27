@@ -199,8 +199,12 @@ describe('SignUp', () => {
         </TestWrapper>,
       );
 
-      // The component renders an empty div in this test scenario
-      expect(document.body.innerHTML).toBe('<div></div>');
+      expect(screen.getByPlaceholderText('Username')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Password')).toBeInTheDocument();
+      expect(screen.getByTestId('checkbox')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Create account' }),
+      ).toBeInTheDocument();
     });
 
     it('renders the logo image', () => {

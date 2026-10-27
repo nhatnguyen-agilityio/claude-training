@@ -28,3 +28,7 @@ storybook-static
 
 .env
 /coverage
+
+# Playwright
+test-results/
+playwright-report/

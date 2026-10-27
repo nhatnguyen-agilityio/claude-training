@@ -33,6 +33,18 @@ jest.mock('../ui/carousel', () => ({
       {children}
     </div>
   ),
+  CarouselPrevious: ({
+    className,
+    ...props
+  }: React.HTMLAttributes<HTMLDivElement>) => (
+    <div {...props} className={className} data-slot="carousel-previous" />
+  ),
+  CarouselNext: ({
+    className,
+    ...props
+  }: React.HTMLAttributes<HTMLDivElement>) => (
+    <div {...props} className={className} data-slot="carousel-next" />
+  ),
 }));
 
 // Mock the Button component

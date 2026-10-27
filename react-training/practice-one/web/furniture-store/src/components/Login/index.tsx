@@ -1,4 +1,4 @@
-import { object, string } from 'zod';
+import { boolean, object, string } from 'zod';
 import type { infer as zodInfer } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,9 +12,11 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from '../ui/form';
 import { Input } from '../ui/input';
+import { Checkbox } from '../ui/checkbox';
 import { useState } from 'react';
 import { useLogin } from '../../apis/login';
 import { Loader2 } from 'lucide-react';
@@ -47,6 +49,7 @@ const loginFormSchema = object({
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[._@#$%^&*!?])[A-Za-z\d._@#$%^&*!?]{8,}$/,
       'Password must include uppercase, lowercase, number, and special character',
     ),
+  rememberMe: boolean(),
 });
 
 const Login = ({
@@ -63,15 +66,17 @@ const Login = ({
     defaultValues: {
       username: '',
       password: '',
+      rememberMe: false,
     },
   });
 
   const { mutate, isLoading, error } = useLogin();
 
   const handleSubmit = (data: zodInfer<typeof loginFormSchema>) => {
-    mutate(data, {
+    const { rememberMe, ...credentials } = data;
+    mutate(credentials, {
       onSuccess: (data) => {
-        setUser(data.user);
+        setUser(data.user, rememberMe);
         onBack();
       },
       onError: () => {
@@ -135,6 +140,29 @@ const Login = ({
                     <div className="min-h-5">
                       <FormMessage />
                     </div>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                name="rememberMe"
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem className="mt-3 mb-2 ml-2 flex items-center">
+                    <FormControl>
+                      <Checkbox
+                        id="rememberMe"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        ref={field.ref}
+                        className="data-[state=checked]:bg-app-primary"
+                      />
+                    </FormControl>
+                    <FormLabel
+                      htmlFor="rememberMe"
+                      className="text-base font-light !text-inherit"
+                    >
+                      Remember me
+                    </FormLabel>
                   </FormItem>
                 )}
               />

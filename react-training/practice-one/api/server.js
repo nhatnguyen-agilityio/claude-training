@@ -1,8 +1,10 @@
 // server.js
+const path = require("path");
 const jsonServer = require("json-server");
 
 const server = jsonServer.create();
-const router = jsonServer.router("db.json");
+// DB_FILE lets tests point the server at a temporary copy of db.json
+const router = jsonServer.router(process.env.DB_FILE || path.join(__dirname, "db.json"));
 const middlewares = jsonServer.defaults();
 
 const PORT = process.env.PORT || 5001;
@@ -81,6 +83,37 @@ server.delete("/carts/users/:userId", (req, res) => {
     return res.status(200).json({ message: "All carts deleted for userId " + userId });
 });
 
+// Returns an error response ({ status, body }) when the variant is missing or short of stock
+const checkVariantStock = (db, item, requestedQuantity) => {
+    const product = db
+        .get("products")
+        .find({ id: item.productId })
+        .value();
+
+    if (!product) {
+        return { status: 404, body: { error: "Product not found" } };
+    }
+
+    const variant = product.variants.find(v => v.id === item.variantId);
+
+    if (!variant) {
+        return { status: 404, body: { error: "Product variant not found" } };
+    }
+
+    if (requestedQuantity > variant.stock) {
+        return {
+            status: 400,
+            body: {
+                error: "Insufficient stock",
+                availableStock: variant.stock,
+                requestedQuantity
+            }
+        };
+    }
+
+    return null;
+};
+
 // Custom route: add to cart
 server.post("/carts/add-to-cart", (req, res) => {
     const db = router.db; // lowdb instance
@@ -88,6 +121,10 @@ server.post("/carts/add-to-cart", (req, res) => {
 
     if (!userId || !item || !item.productId || !item.variantId || !item.quantity) {
         return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+        return res.status(400).json({ error: "Quantity must be a positive whole number" });
     }
 
     // Check if cart already exists
@@ -101,30 +138,11 @@ server.post("/carts/add-to-cart", (req, res) => {
         .value();
 
     if (existingCart) {
-        // Find the product variant to check stock
-        const product = db
-            .get("products")
-            .find({ id: item.productId })
-            .value();
-
-        if (!product) {
-            return res.status(404).json({ error: "Product not found" });
-        }
-
-        const variant = product.variants.find(v => v.id === item.variantId);
-
-        if (!variant) {
-            return res.status(404).json({ error: "Product variant not found" });
-        }
-
         const newQuantity = existingCart.item.quantity + item.quantity;
 
-        if (newQuantity > variant.stock) {
-            return res.status(400).json({
-                error: "Insufficient stock",
-                availableStock: variant.stock,
-                requestedQuantity: newQuantity
-            });
+        const stockError = checkVariantStock(db, item, newQuantity);
+        if (stockError) {
+            return res.status(stockError.status).json(stockError.body);
         }
 
         // Update quantity
@@ -141,6 +159,11 @@ server.post("/carts/add-to-cart", (req, res) => {
 
         return res.json(updated);
     } else {
+        const stockError = checkVariantStock(db, item, item.quantity);
+        if (stockError) {
+            return res.status(stockError.status).json(stockError.body);
+        }
+
         // Create new row
         const newCart = {
             userId,
@@ -339,6 +362,11 @@ server.get("/products/with-stock", (req, res) => {
 
 server.use(router);
 
-server.listen(PORT, () => {
-    console.log(`✅ JSON Server is running on port ${PORT}`);
-});
+// Only listen when run directly (node server.js), not when imported by tests
+if (require.main === module) {
+    server.listen(PORT, () => {
+        console.log(`✅ JSON Server is running on port ${PORT}`);
+    });
+}
+
+module.exports = { server, router };

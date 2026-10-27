@@ -100,7 +100,7 @@ describe('FilterDropdownComponent', () => {
         </TestQueryClient>,
       );
       expect(
-        screen.getByRole('button', { name: 'Price: High to Low' }),
+        screen.getByRole('button', { name: 'Most Recent' }),
       ).toBeInTheDocument();
     });
 
@@ -124,7 +124,7 @@ describe('FilterDropdownComponent', () => {
         </TestQueryClient>,
       );
       expect(
-        screen.getByRole('button', { name: 'Price: High to Low' }),
+        screen.getByRole('button', { name: 'Most Recent' }),
       ).toBeInTheDocument();
     });
   });

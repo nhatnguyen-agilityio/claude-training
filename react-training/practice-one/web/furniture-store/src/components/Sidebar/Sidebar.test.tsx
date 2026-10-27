@@ -294,7 +294,7 @@ describe('Sidebar', () => {
         expect(screen.getByTestId('drawer-content')).toBeInTheDocument();
         expect(screen.getByTestId('drawer-content')).toHaveClass(
           'w-full',
-          'lg:w-1/2',
+          'lg:w-1/3',
         );
 
         // Check header
@@ -374,7 +374,7 @@ describe('Sidebar', () => {
       );
       expect(drawerContent).toHaveClass(
         'w-full',
-        'lg:w-1/2',
+        'lg:w-1/3',
         'border-none',
         'overflow-y-auto',
         'overflow-x-hidden',
