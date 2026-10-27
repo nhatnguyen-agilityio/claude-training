@@ -33,5 +33,5 @@ furniture-store-checks:
   script:
     - pnpm lint
     - pnpm build
-    # Only the cart and checkout areas: other suites have known, unrelated failures
-    - pnpm test -- src/utils/cart-summary src/apis/cart-products src/components/Cart src/utils/order-payload src/components/Payment src/components/Checkout
+    # Only the cart, checkout, login and auth areas: other suites have known, unrelated failures
+    - pnpm test -- src/utils/cart-summary src/apis/cart-products src/components/Cart src/utils/order-payload src/components/Payment src/components/Checkout src/components/Login src/auth

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ChangeEvent, ReactNode } from 'react';
 import { BrowserRouter } from 'react-router-dom';
@@ -96,36 +96,45 @@ jest.mock('../ui/input', () => ({
   },
 }));
 
-jest.mock('../ui/form', () => ({
-  Form: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  FormControl: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  FormField: ({
-    render,
-    name,
+jest.mock('../ui/checkbox', () => ({
+  Checkbox: ({
+    id,
+    checked,
+    onCheckedChange,
   }: {
-    render: (props: {
-      field: {
-        name: string;
-        value: string;
-        onChange: jest.Mock;
-        onBlur: jest.Mock;
-        ref: jest.Mock;
-      };
-    }) => ReactNode;
-    name: string;
-  }) => {
-    const field = {
-      name,
-      value: '',
-      onChange: jest.fn(),
-      onBlur: jest.fn(),
-      ref: jest.fn(),
-    };
-    return render({ field });
-  },
-  FormItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  FormMessage: () => <div data-testid="form-message" />,
+    id?: string;
+    checked?: boolean;
+    onCheckedChange?: (checked: boolean) => void;
+  }) => (
+    <input
+      id={id}
+      type="checkbox"
+      checked={!!checked}
+      onChange={(e) => onCheckedChange?.(e.target.checked)}
+    />
+  ),
 }));
+
+// FormField renders through the real Controller so form state and submit work
+jest.mock('../ui/form', () => {
+  const { Controller } = jest.requireActual('react-hook-form');
+  return {
+    Form: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    FormControl: ({ children }: { children: ReactNode }) => (
+      <div>{children}</div>
+    ),
+    FormField: Controller,
+    FormItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    FormLabel: ({
+      children,
+      htmlFor,
+    }: {
+      children: ReactNode;
+      htmlFor?: string;
+    }) => <label htmlFor={htmlFor}>{children}</label>,
+    FormMessage: () => <div data-testid="form-message" />,
+  };
+});
 
 jest.mock('../ui/alert-dialog', () => ({
   AlertDialog: ({ children, open }: { children: ReactNode; open: boolean }) =>
@@ -193,15 +202,17 @@ describe('Login Component', () => {
   });
 
   describe('Rendering', () => {
-    it('renders login form with all required elements', () => {
+    it('should render all form fields when the login form is shown', () => {
       render(
         <TestWrapper>
           <Login onNext={mockOnNext} onBack={mockOnBack} />
         </TestWrapper>,
       );
 
-      // The component renders an empty div in this test scenario
-      expect(document.body.innerHTML).toBe('<div></div>');
+      expect(screen.getByPlaceholderText('Username')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Password')).toBeInTheDocument();
+      expect(screen.getByLabelText('Remember me')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument();
     });
 
     it('renders the logo image', () => {
@@ -294,6 +305,62 @@ describe('Login Component', () => {
       expect(
         screen.getByRole('button', { name: 'Logging in...' }),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('Remember Me', () => {
+    const loggedInUser = { id: 1, username: 'testuser1' };
+
+    const submitValidLogin = async (tickRememberMe: boolean) => {
+      const user = userEvent.setup();
+      render(
+        <TestWrapper>
+          <Login onNext={mockOnNext} onBack={mockOnBack} />
+        </TestWrapper>,
+      );
+
+      await user.type(screen.getByPlaceholderText('Username'), 'testuser1');
+      await user.type(screen.getByPlaceholderText('Password'), 'Password1!');
+      if (tickRememberMe) {
+        await user.click(screen.getByLabelText('Remember me'));
+      }
+      await user.click(screen.getByRole('button', { name: 'Login' }));
+
+      const [, callbacks] = mockMutate.mock.calls[0];
+      act(() => callbacks.onSuccess({ user: loggedInUser }));
+    };
+
+    it('should leave remember me unticked when the form first renders', () => {
+      render(
+        <TestWrapper>
+          <Login onNext={mockOnNext} onBack={mockOnBack} />
+        </TestWrapper>,
+      );
+
+      expect(screen.getByLabelText('Remember me')).not.toBeChecked();
+    });
+
+    it('should send only username and password when the form is submitted', async () => {
+      await submitValidLogin(true);
+
+      expect(mockMutate).toHaveBeenCalledWith(
+        { username: 'testuser1', password: 'Password1!' },
+        expect.any(Object),
+      );
+    });
+
+    it('should remember the user when remember me is ticked', async () => {
+      await submitValidLogin(true);
+
+      expect(mockSetUser).toHaveBeenCalledWith(loggedInUser, true);
+      expect(mockOnBack).toHaveBeenCalled();
+    });
+
+    it('should not remember the user when remember me is unticked', async () => {
+      await submitValidLogin(false);
+
+      expect(mockSetUser).toHaveBeenCalledWith(loggedInUser, false);
+      expect(mockOnBack).toHaveBeenCalled();
     });
   });
 
