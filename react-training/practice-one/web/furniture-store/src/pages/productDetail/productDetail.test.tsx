@@ -291,8 +291,10 @@ describe('ProductDetail Page', () => {
         </TestWrapper>,
       );
 
-      // The component renders an empty div in this test scenario
-      expect(document.body.innerHTML).toBe('<div></div>');
+      expect(screen.getByText('Failed to load product')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Try Again' }),
+      ).toBeInTheDocument();
     });
 
     it('renders try again button in error state', () => {

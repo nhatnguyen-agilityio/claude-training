@@ -37,8 +37,9 @@ describe('Button Component', () => {
     it('renders button with default props', () => {
       render(<Button>Click me</Button>);
 
-      // The component renders an empty div in this test scenario due to lazy loading
-      expect(document.body.innerHTML).toBe('<div></div>');
+      expect(
+        screen.getByRole('button', { name: 'Click me' }),
+      ).toBeInTheDocument();
     });
 
     it('renders button with custom children', () => {
