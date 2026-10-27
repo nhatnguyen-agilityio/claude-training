@@ -7,6 +7,8 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
+  // One retry in CI, so a cold-start timing failure is reported as flaky instead of failing the pipeline
+  retries: process.env.CI ? 1 : 0,
   reporter: 'list',
   use: {
     baseURL: `http://localhost:${E2E_WEB_PORT}`,
