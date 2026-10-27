@@ -2,6 +2,22 @@
 stages:
   - check
 
+# API tests (node:test). Runs on merge requests that touch the api folder.
+api-tests:
+  stage: check
+  image: node:20
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - react-training/practice-one/api/**/*
+  before_script:
+    - cd react-training/practice-one/api
+    # The lockfile is v9, so pin pnpm 9 (older pnpm can't read it)
+    - corepack enable && corepack prepare pnpm@9.15.9 --activate
+    - pnpm install --frozen-lockfile
+  script:
+    - node --test
+
 furniture-store-checks:
   stage: check
   image: node:20
