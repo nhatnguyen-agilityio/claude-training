@@ -59,6 +59,14 @@ Customers place orders, but then they can't see them anywhere. v1 gives logged-i
 | Badge colors | Processing amber, Shipped blue, Delivered green, Cancelled **red** *(lead's change)*. | #10 |
 | Login guard | The login drawer is opened from pages via a small context; auth gets an `isReady` flag. #11 is now **M** and starts early. | #11 |
 | Buy again | One add-to-cart call per item. Skip items with less stock than ordered. | #13 |
+| Add-to-cart stock | Stock is checked for new cart rows too, not only existing ones (400 "Insufficient stock" with `availableStock`). | [#16](https://gitlab.asoft-python.com/nhat.nguyen/claude-training/-/issues/16), [!5](https://gitlab.asoft-python.com/nhat.nguyen/claude-training/-/merge_requests/5) · 2026-10-26 |
+| Add-to-cart input | Quantity must be a positive whole number, otherwise 400. A missing product or variant returns 404. | [!5](https://gitlab.asoft-python.com/nhat.nguyen/claude-training/-/merge_requests/5) (quantity: code review) · 2026-10-26 |
+| Remember me | Unticked by default *(lead's answer)*. Ticked: localStorage; unticked: sessionStorage. Logout clears both. On reload, localStorage wins. | [#17](https://gitlab.asoft-python.com/nhat.nguyen/claude-training/-/issues/17), [!6](https://gitlab.asoft-python.com/nhat.nguyen/claude-training/-/merge_requests/6) · 2026-10-26 |
+| Stored user | Only `{id, username}` is saved in the browser; the rest stays in memory for the visit. | [!6](https://gitlab.asoft-python.com/nhat.nguyen/claude-training/-/merge_requests/6) review · 2026-10-26 |
+
+**QA gaps** (from the [test matrix](my-orders-test-matrix.md) §1):
+- Resolved: **G1** totals via `calculateCartSummary` (#6) · **G2** dates "23 Sep 2025" via `Intl.DateTimeFormat` (#8) · **G5** login drawer opens (#11) · **G6** "Product unavailable" added to #9 · **G7** only existing fields shown, so no payment line without `cardLast4` (#9) · **G8** amber / blue / green / red (#10).
+- Open, QA defaults stand: **G3** "Order #`<id>`" · **G4** Show more hidden once everything is loaded · **G9** also test 768px.
 
 ## 5. User stories and acceptance criteria
 
@@ -143,12 +151,14 @@ On mobile, the sections stack and each item row wraps under its image.
 - Someone else's order id, or an id that doesn't exist: Not Found.
 - Refresh while logged in: no bounce to login (the user is restored after the first render).
 - A product that no longer exists: show the item with "Product unavailable".
+- Add to cart (Buy again too): over stock or stock 0 → 400; bad quantity → 400; missing product or variant → 404.
 
 ## 9. Security notes
 
 - The API has no auth, so the UI must hide other users' orders. A real backend check is a follow-up.
 - 11 old seed orders contain full card numbers and CVV. Never render them. Show only `cardLast4`, when it exists.
 - `GET /orders/:id` still sends those card fields to the browser. Stripping them on the server is a high-priority follow-up right after the demo.
+- A remembered login ("Remember me" ticked) stores only `id` and `username` in the browser, never name, email, address or phone (#17, !6).
 
 ## 10. Risks
 
@@ -174,6 +184,23 @@ On mobile, the sections stack and each item row wraps under its image.
 **Follow-up tickets agreed in the dev Q&A (child tasks of #5):**
 - #14: Silent stock-update and cart-clear failures after checkout.
 - #15: Strip card number and CVV from order responses (high priority after the demo).
-- #16: Add-to-cart doesn't check stock for a new cart row (do before #13).
-- #17: Login "remember me" doesn't work (after the demo).
+- #16: Add-to-cart doesn't check stock for a new cart row (do before #13). MR [!5](https://gitlab.asoft-python.com/nhat.nguyen/claude-training/-/merge_requests/5): in review, not merged.
+- #17: Login "remember me" doesn't work (after the demo). MR [!6](https://gitlab.asoft-python.com/nhat.nguyen/claude-training/-/merge_requests/6): in review, not merged.
 - #18: `removeCustomerInfo` clears the wrong storage key.
+- No ticket: MR [!7](https://gitlab.asoft-python.com/nhat.nguyen/claude-training/-/merge_requests/7) fixes old failing tests; merge after !6.
+
+## 12. Open questions (proposed follow-ups, no tickets yet)
+
+- **Sidebar width:** the component uses `lg:w-1/3`, old tests expected 1/2. Which is intended? Needs a designer or PO. (!7 review)
+- **Cart page bypasses the stock check:** changing a quantity in the cart uses `PUT /carts/:id`, which has no stock check. (!5 review)
+- **Duplicate cart rows:** rows are duplicated when ids differ only by type (`userId: "4"` vs `4`). (!5 review)
+
+## 13. Decisions log
+
+| Date | Decision | Where decided |
+|---|---|---|
+| 2026-10-26 | Stock checked for new cart rows; bad quantity 400; missing product or variant 404 | #16, !5 (code review) |
+| 2026-10-26 | "Remember me" unticked by default | #17 (lead) |
+| 2026-10-26 | Ticked → localStorage, unticked → sessionStorage; logout clears both; localStorage wins on reload | !6 |
+| 2026-10-26 | Remembered login stores only `{id, username}` | !6 (code review) |
+| 2026-10-26 | QA gaps G1, G2, G5–G8 resolved; G3, G4, G9 stay on QA defaults | #6, #8–#11, test matrix |
