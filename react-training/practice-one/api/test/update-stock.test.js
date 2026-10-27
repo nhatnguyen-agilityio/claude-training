@@ -13,6 +13,9 @@ const STOCK = 5;
 const OTHER_STOCK = 7;
 const SECOND_VARIANT_STOCK = 4;
 const MISSING_ID = 999999;
+const STRING_ID_STOCK = 6;
+const STRING_PRODUCT_ID = "sofa-1";
+const STRING_VARIANT_ID = "v1";
 
 let tmpDir;
 let httpServer;
@@ -54,6 +57,12 @@ beforeEach(async () => {
     product.variants[0].stock = STOCK;
     product.variants[1].stock = SECOND_VARIANT_STOCK;
     otherProduct.variants.find((v) => v.id === variantId).stock = OTHER_STOCK;
+    // A product whose ids are strings, to prove ids are not parsed as numbers
+    db.products.push({
+        ...product,
+        id: STRING_PRODUCT_ID,
+        variants: [{ ...product.variants[0], id: STRING_VARIANT_ID, stock: STRING_ID_STOCK }],
+    });
     fs.writeFileSync(dbFile, JSON.stringify(db));
 
     // Load a fresh server so its router reads this test's copy
@@ -194,5 +203,37 @@ describe("PATCH /products/update-stock", () => {
 
         assert.equal(status, 400);
         assert.equal(body.errors[0].error, "Product variant not found");
+    });
+
+    it("should deduct a product with string ids when it follows a numeric item in the batch", async () => {
+        const { status, body } = await updateStock([
+            { productId, variantId, quantity: 1 },
+            { productId: STRING_PRODUCT_ID, variantId: STRING_VARIANT_ID, quantity: 2 },
+        ]);
+
+        assert.equal(status, 200);
+        assert.deepEqual(body.updated[1], {
+            productId: STRING_PRODUCT_ID,
+            variantId: STRING_VARIANT_ID,
+            previousStock: STRING_ID_STOCK,
+            newStock: STRING_ID_STOCK - 2,
+            quantityDeducted: 2,
+        });
+        assert.equal(await getStock(productId, variantId), STOCK - 1);
+        assert.equal(await getStock(STRING_PRODUCT_ID, STRING_VARIANT_ID), STRING_ID_STOCK - 2);
+    });
+
+    it("should write nothing when a later item with string ids is short of stock", async () => {
+        const { status, body } = await updateStock([
+            { productId, variantId, quantity: 1 },
+            { productId: STRING_PRODUCT_ID, variantId: STRING_VARIANT_ID, quantity: STRING_ID_STOCK + 1 },
+        ]);
+
+        assert.equal(status, 400);
+        assert.equal(body.errors[0].index, 1);
+        assert.equal(body.errors[0].available, STRING_ID_STOCK);
+        assert.equal(body.errors[0].requested, STRING_ID_STOCK + 1);
+        assert.equal(await getStock(productId, variantId), STOCK);
+        assert.equal(await getStock(STRING_PRODUCT_ID, STRING_VARIANT_ID), STRING_ID_STOCK);
     });
 });

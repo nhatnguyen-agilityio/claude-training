@@ -186,7 +186,7 @@ server.patch("/products/update-stock", (req, res) => {
     }
 
     const errors = [];
-    // Total requested per product + variant, so duplicates are checked together
+    // Valid items grouped by product + variant, keeping the typed ids
     const requested = new Map();
 
     // Validate every item first: nothing is written unless all of them pass
@@ -203,57 +203,44 @@ server.patch("/products/update-stock", (req, res) => {
             return;
         }
 
-        const product = db.get("products").find({ id: productId }).value();
-        const variant = product && product.variants
-            ? product.variants.find(v => v.id === variantId)
-            : undefined;
-
-        if (!product) {
-            errors.push({ index, productId, variantId, error: "Product not found" });
-            return;
-        }
-
-        if (!variant) {
-            errors.push({ index, productId, variantId, error: "Product variant not found" });
-            return;
-        }
-
+        // Total requested per product + variant, so duplicates are checked together
         const key = `${productId}:${variantId}`;
-        const total = (requested.get(key) || 0) + quantity;
-        requested.set(key, total);
+        const total = (requested.get(key)?.quantity || 0) + quantity;
 
-        if (total > variant.stock) {
+        const stockError = checkVariantStock(db, updateItem, total);
+        if (stockError) {
+            const { availableStock, requestedQuantity, ...rest } = stockError.body;
             errors.push({
                 index,
                 productId,
                 variantId,
-                error: "Insufficient stock",
-                available: variant.stock,
-                requested: total
+                ...rest,
+                ...(availableStock !== undefined && { available: availableStock }),
+                ...(requestedQuantity !== undefined && { requested: requestedQuantity }),
             });
+            return;
         }
+
+        requested.set(key, { productId, variantId, quantity: total });
     });
 
     if (errors.length > 0) {
         return res.status(400).json({ success: false, errors });
     }
 
-    // Everything is valid: deduct once per product + variant
+    // Everything is valid: deduct once per product + variant, then write once
     const updated = [];
-    for (const [key, quantityDeducted] of requested) {
-        const [productId, variantId] = key.split(":").map(Number);
-        const variant = db
-            .get("products")
-            .find({ id: productId })
-            .get("variants")
-            .find({ id: variantId });
-        const previousStock = variant.value().stock;
+    for (const { productId, variantId, quantity: quantityDeducted } of requested.values()) {
+        const product = db.get("products").find({ id: productId }).value();
+        const variant = product.variants.find(v => v.id === variantId);
+        const previousStock = variant.stock;
         const newStock = previousStock - quantityDeducted;
 
-        variant.assign({ stock: newStock }).write();
+        variant.stock = newStock;
 
         updated.push({ productId, variantId, previousStock, newStock, quantityDeducted });
     }
+    db.write();
 
     return res.status(200).json({ success: true, updated });
 });
