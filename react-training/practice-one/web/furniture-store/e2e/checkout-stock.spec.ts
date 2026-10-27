@@ -26,6 +26,36 @@ const readStock = async (
   ).stock as number;
 };
 
+const goToPayment = async (page: Page) => {
+  await page.getByRole('button', { name: 'Cart', exact: true }).click();
+  await page.getByRole('button', { name: 'Next' }).click();
+
+  await page.getByPlaceholder('Email').fill('buyer@example.com');
+  await page.getByPlaceholder('First Name').fill('Test');
+  await page.getByPlaceholder('Last Name').fill('Buyer');
+  await page.getByPlaceholder('Phone Number').fill('0901234567');
+  await page.getByPlaceholder('Address').fill('1 Test Street');
+  await page.getByPlaceholder('City').fill('Testville');
+  await page.getByPlaceholder('Country').fill('Testland');
+  await page.getByRole('button', { name: 'Proceed to payment' }).click();
+
+  await page.getByPlaceholder('Card number').fill('4242424242424242');
+  await page.getByPlaceholder('Expiration date').fill('12/30');
+  await page.getByPlaceholder('CVV').fill('123');
+  await page.getByPlaceholder('Cardholder name').fill('Test Buyer');
+};
+
+const addToCart = async (page: Page) => {
+  await page.goto('/');
+  await login(page);
+  await page.goto(`/products/${PRODUCT_ID}?variantId=${VARIANT_ID}`);
+
+  const detail = productDetail(page);
+  await detail.getByRole('spinbutton', { name: 'Quantity' }).fill('1');
+  await detail.getByRole('button', { name: 'Add to cart' }).click();
+  await expect(page.getByText('has been added to your cart')).toBeVisible();
+};
+
 test.describe('Checkout stock update', () => {
   test.beforeEach(async ({ request }) => {
     // Other specs share this database: start from an empty cart
@@ -43,31 +73,8 @@ test.describe('Checkout stock update', () => {
       VARIANT_ID,
     );
 
-    await page.goto('/');
-    await login(page);
-    await page.goto(`/products/${PRODUCT_ID}?variantId=${VARIANT_ID}`);
-
-    const detail = productDetail(page);
-    await detail.getByRole('spinbutton', { name: 'Quantity' }).fill('1');
-    await detail.getByRole('button', { name: 'Add to cart' }).click();
-    await expect(page.getByText('has been added to your cart')).toBeVisible();
-
-    await page.getByRole('button', { name: 'Cart', exact: true }).click();
-    await page.getByRole('button', { name: 'Next' }).click();
-
-    await page.getByPlaceholder('Email').fill('buyer@example.com');
-    await page.getByPlaceholder('First Name').fill('Test');
-    await page.getByPlaceholder('Last Name').fill('Buyer');
-    await page.getByPlaceholder('Phone Number').fill('0901234567');
-    await page.getByPlaceholder('Address').fill('1 Test Street');
-    await page.getByPlaceholder('City').fill('Testville');
-    await page.getByPlaceholder('Country').fill('Testland');
-    await page.getByRole('button', { name: 'Proceed to payment' }).click();
-
-    await page.getByPlaceholder('Card number').fill('4242424242424242');
-    await page.getByPlaceholder('Expiration date').fill('12/30');
-    await page.getByPlaceholder('CVV').fill('123');
-    await page.getByPlaceholder('Cardholder name').fill('Test Buyer');
+    await addToCart(page);
+    await goToPayment(page);
     await page.getByRole('button', { name: 'Pay Now' }).click();
 
     await expect(page.getByText('Your Order is Confirmed!')).toBeVisible();
@@ -78,5 +85,45 @@ test.describe('Checkout stock update', () => {
     expect(await readStock(request, OTHER_PRODUCT_ID, VARIANT_ID)).toBe(
       otherStockBefore,
     );
+  });
+
+  test('should block the order and keep the cart when an item runs out before payment', async ({
+    page,
+    request,
+  }) => {
+    const productUrl = `${E2E_API_URL}/products/${PRODUCT_ID}`;
+    const ordersUrl = `${E2E_API_URL}/orders?userId=${seedUser.id}`;
+    const cartUrl = `${E2E_API_URL}/carts?userId=${seedUser.id}`;
+    const originalProduct = await (await request.get(productUrl)).json();
+    const countOf = async (url: string) =>
+      (await (await request.get(url)).json()).length;
+
+    try {
+      await addToCart(page);
+      const ordersBefore = await countOf(ordersUrl);
+
+      // Someone else buys the last unit while this customer is checking out
+      await request.patch(productUrl, {
+        data: {
+          variants: originalProduct.variants.map((variant: { id: number }) =>
+            variant.id === VARIANT_ID ? { ...variant, stock: 0 } : variant,
+          ),
+        },
+      });
+
+      await goToPayment(page);
+      await page.getByRole('button', { name: 'Pay Now' }).click();
+
+      await expect(
+        page.getByText('Some items are no longer in stock'),
+      ).toBeVisible();
+      await expect(page.getByText('Your Order is Confirmed!')).toBeHidden();
+      expect(await countOf(ordersUrl)).toBe(ordersBefore);
+      expect(await countOf(cartUrl)).toBe(1);
+    } finally {
+      await request.patch(productUrl, {
+        data: { variants: originalProduct.variants },
+      });
+    }
   });
 });

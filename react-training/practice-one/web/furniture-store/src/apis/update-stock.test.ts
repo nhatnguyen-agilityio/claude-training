@@ -102,6 +102,32 @@ describe('useUpdateStock', () => {
     });
   });
 
+  it('should fall back to the first errors entry when the response has no top-level error', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: () =>
+        Promise.resolve({
+          success: false,
+          errors: [
+            { index: 0, error: 'Insufficient stock' },
+            { index: 1, error: 'Product not found' },
+          ],
+        }),
+    } as Response);
+
+    const { result } = renderHook(() => useUpdateStock(), {
+      wrapper: createWrapper(),
+    });
+
+    result.current.mutate({
+      items: [{ productId: 1, variantId: 101, quantity: 10 }],
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBe('Insufficient stock');
+    });
+  });
+
   it('should handle network error', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
