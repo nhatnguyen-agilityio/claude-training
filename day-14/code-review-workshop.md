@@ -18,7 +18,7 @@ Then came the review requirement. Two pieces of code were waiting for review, so
 - **The #19 fix changes how stock is written to the database.** That's "data", so it got the deep cloud review (`/code-review ultra`).
 - **The CI change (!9)** touches neither auth nor data, so the normal review at high effort was enough.
 
-The ultra review found 5 real problems, and the most serious was a design problem the fix itself had created. The high review of !9 found 9, including a version mismatch that would have made CI behave differently from my machine. I chose which findings to fix. Every fix was tested, committed, pushed and reported on the ticket or MR.
+The ultra review found 5 real problems, and the most serious was a design problem the fix itself had created. The high review of !9 found 9, including a version mismatch that would have made CI behave differently from my machine. I fixed 5 first and the other 4 in a second round, so every finding from both reviews is now fixed. Every fix was tested, committed, pushed and reported on the ticket or MR.
 
 ---
 
@@ -31,8 +31,8 @@ The ultra review found 5 real problems, and the most serious was a design proble
 | 3 | Ultra review, scoped to the fix only | ✅ 7 files, all in `practice-one`. 5 findings (2 normal, 3 small) |
 | 4 | Check findings before fixing | ✅ All 5 confirmed against the code, with a short table of "real or not, fix or ticket, why" |
 | 5 | Fix the ultra findings | ✅ All 5 fixed in 3 commits (`6d255e6`, `7c9375b`, `952b353`) |
-| 6 | Review !9 at high effort | ✅ 9 findings; I chose 5 to fix now and left 4 for later |
-| 7 | Fix the !9 findings | ✅ 5 fixed in `bbf8aa2`, and GitLab's CI lint says the file is valid |
+| 6 | Review !9 at high effort | ✅ 9 findings, fixed in two rounds |
+| 7 | Fix the !9 findings | ✅ All 9 fixed. Round 1 (`bbf8aa2`): tool and Node versions aligned with local, one retry for e2e tests, a cap on test workers, faster installs. Round 2 (`1120b3a`): pnpm pinned in `package.json`, pipelines also run after merges to `main` and the day branches, one redundant flag removed, clearer job comments. GitLab's CI lint says the file is valid |
 | 8 | Report the results | ✅ Review summaries posted on #19 and !9: findings, fix commits, test results and what's still open |
 
 **Tests after all fixes (day-14 branch):** API 30/30, unit 1033/1033 (up from 1025), e2e 11/11 in three runs in a row, lint and build clean. The real data file was never touched.
@@ -59,7 +59,7 @@ The ultra review found 5 real problems, and the most serious was a design proble
 6. **Prove a test catches the bug.** Running the new tests against the old code (11 of 16 failed, and the e2e test showed the wrong stock) is what shows they're worth keeping.
 7. **Don't trust "it was just a flake".** A sub-agent reported one random e2e failure. Claude reran the suite three times before accepting it. All passed, but checking is what makes that a fact.
 8. **A normal review still finds real problems.** The !9 review spotted that the API folder quietly forces pnpm 10 while CI uses pnpm 9, and that the e2e image runs a different Node version. The tests can't catch problems like these, but they would make CI behave differently from my machine.
-9. **The person decides what gets fixed.** Claude recommended "fix 2–5 and ticket finding 1", and I chose to fix all five. For !9 I chose 5 of 9. Every choice is recorded on GitLab.
+9. **The person decides what gets fixed.** Claude recommended "fix 2–5 and ticket finding 1", and I chose to fix all five. For !9 I fixed the 5 most useful first and came back for the other 4. Every choice is recorded on GitLab.
 10. **One commit per kind of change.** The ultra fixes went in as three commits (checkout flow, cart input, server tidy-up), so each one is easy to review or revert.
 11. **Cheap model for code, strong model for judgement.** Sonnet wrote the fixes and Opus reviewed them. The quality held, and most of the token-heavy work ran on the cheaper model.
 
@@ -70,7 +70,8 @@ The ultra review found 5 real problems, and the most serious was a design proble
 - **The ultra review refused a folder path.** It accepts only a branch, commit or PR. We used the commit before the fix as the base, and the launch dialog confirmed the scope (7 files) before anything ran.
 - **I changed my mind about the MR.** I stopped the MR halfway and asked for the fix to go straight onto the day-14 branch. That branch didn't have the merged day-13 work the fix needed, so Claude asked first, merged it in, applied the fix, and reran every test.
 - **The best fix had a trade-off.** If saving the order fails *after* the stock was reserved, that stock stays deducted. We accepted this because it's the safe direction (it can't oversell) and wrote it down on #19.
-- **Some findings had to wait.** For !9, I kept the deeper changes for later: pinning pnpm in `package.json`, running pipelines after merge, and two small clean-ups.
+- **Some findings needed a decision first.** Running pipelines after a merge changes when CI runs, so Claude asked which branches to cover. I chose `main` and the `feat/day-*` branches, with no duplicate pipeline while an MR is open.
+- **A dry run can't prove everything.** GitLab's dry run accepted the new branch pipeline, but showed no jobs because there was no real push to compare files against. That part is only proven by the first real pipeline.
 - **CI still can't really run.** The project has no CI runner, so the !9 fixes are checked by GitLab's CI lint and by running the commands locally, not by a real pipeline yet.
 - **The browser pane closed mid-task.** Claude reopened GitLab and posted the review note without losing anything.
 
@@ -79,7 +80,6 @@ The ultra review found 5 real problems, and the most serious was a design proble
 ## Still open
 
 - Set up a CI runner so !9 runs for the first time.
-- The 4 remaining !9 findings: pin pnpm in `package.json`, run pipelines on the target branch, remove a redundant flag, and update the job comments.
 - A ticket for `PATCH /carts/:id`, which still skips the stock check on the server.
 
 ---
