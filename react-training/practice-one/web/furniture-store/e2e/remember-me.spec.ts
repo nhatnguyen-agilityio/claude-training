@@ -64,18 +64,29 @@ test.describe('Login remember me', () => {
     await expect(newPage.getByRole('button', { name: 'User' })).toBeVisible();
   });
 
-  test('should clear both storages when the user logs out', async ({
-    page,
-  }) => {
-    await login(page, { remember: true });
-    await logout(page);
+  for (const [label, remember] of [
+    ['with remember me ticked', true],
+    ['with remember me unticked', false],
+  ] as const) {
+    test(`should clear both storages when the user logs out after logging in ${label}`, async ({
+      page,
+    }) => {
+      await login(page, { remember });
+      // The user sits in one storage before logout: local if ticked, else session
+      const { local, session } = await readAuthUser(page);
+      expect(JSON.parse((remember ? local : session) ?? 'null')).toEqual(
+        storedUser(),
+      );
 
-    expect(await readAuthUser(page)).toEqual({ local: null, session: null });
+      await logout(page);
 
-    await page.reload();
-    await expect(
-      page.getByRole('button', { name: 'Get Started' }),
-    ).toBeVisible();
-    expect(await readAuthUser(page)).toEqual({ local: null, session: null });
-  });
+      expect(await readAuthUser(page)).toEqual({ local: null, session: null });
+
+      await page.reload();
+      await expect(
+        page.getByRole('button', { name: 'Get Started' }),
+      ).toBeVisible();
+      expect(await readAuthUser(page)).toEqual({ local: null, session: null });
+    });
+  }
 });
