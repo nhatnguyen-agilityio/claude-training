@@ -106,11 +106,21 @@ test.describe('Checkout stock update', () => {
       });
 
       await goToPayment(page);
+      // Listen before clicking, so the stock request cannot be missed
+      const stockResponse = page.waitForResponse(
+        (response) =>
+          /\/products\/update-stock\/?$/.test(response.url()) &&
+          response.request().method() === 'PATCH',
+      );
       await page.getByRole('button', { name: 'Pay Now' }).click();
 
+      expect((await stockResponse).status()).toBe(400);
       await expect(
         page.getByText('Some items are no longer in stock'),
       ).toBeVisible();
+      // Let any follow-up requests finish, so a late order write would show up
+      await page.waitForLoadState('networkidle');
+
       await expect(page.getByText('Your Order is Confirmed!')).toBeHidden();
       expect(await countOf(ordersUrl)).toBe(ordersBefore);
       expect(await countOf(cartUrl)).toBe(1);
