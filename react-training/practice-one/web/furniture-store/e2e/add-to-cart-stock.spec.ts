@@ -2,15 +2,16 @@ import { expect, test, type Page } from '@playwright/test';
 import { E2E_API_URL } from './test-env';
 import { login, productDetail, seedUser } from './helpers';
 
-// start-test-api.mjs sets product 1: variant 101 stock 2, variant 102 stock 0
-
 test.describe.configure({ mode: 'serial' });
 
+// start-test-api.mjs sets product 1: variant 101 stock 2, variant 102 stock 0
 test.describe('Add to cart stock check', () => {
   let page: Page;
 
   test.beforeAll(async ({ browser }) => {
     page = await browser.newPage();
+    // Start from an empty cart so a repeat or retry of this group passes
+    await page.request.delete(`${E2E_API_URL}/carts/users/${seedUser.id}`);
     await page.goto('/');
     await login(page);
   });
