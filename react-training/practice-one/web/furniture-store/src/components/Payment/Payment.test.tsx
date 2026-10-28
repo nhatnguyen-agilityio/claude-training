@@ -47,6 +47,12 @@ const mockAddPayment = jest.fn();
 const mockUpdatePayment = jest.fn();
 const mockAddOrder = jest.fn();
 const mockDeleteCart = jest.fn();
+const mockUpdateStock = jest.fn();
+const mockToastError = jest.fn();
+
+jest.mock('sonner', () => ({
+  toast: { error: (...args: unknown[]) => mockToastError(...args) },
+}));
 
 jest.mock('../../apis/add-payment', () => ({
   useAddPayment: () => ({ mutate: mockAddPayment }),
@@ -58,6 +64,10 @@ jest.mock('../../apis/update-payment', () => ({
 
 jest.mock('../../apis/add-order', () => ({
   useAddOrder: () => ({ mutate: mockAddOrder }),
+}));
+
+jest.mock('../../apis/update-stock', () => ({
+  useUpdateStock: () => ({ mutate: mockUpdateStock }),
 }));
 
 jest.mock('../../apis/delete-cart', () => ({
@@ -213,6 +223,11 @@ describe('Payment Component', () => {
     // mockReset also drops implementations set by earlier tests
     mockLocalStorage.getItem.mockReset();
     mockLocalStorage.setItem.mockClear();
+    // By default the stock update succeeds, like the real API with enough stock
+    mockUpdateStock.mockImplementation(
+      (_payload: unknown, options?: { onSuccess?: () => void }) =>
+        options?.onSuccess?.(),
+    );
   });
 
   describe('Rendering', () => {
@@ -393,6 +408,100 @@ describe('Payment Component', () => {
       mockAddOrder.mock.calls[0][1].onSuccess();
 
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('checkout');
+    });
+
+    it('should send productId with each stock update when the order succeeds', async () => {
+      const user = userEvent.setup();
+      mockLocalStorage.getItem.mockReturnValue(
+        JSON.stringify(mockCustomerInfo),
+      );
+
+      render(
+        <TestWrapper>
+          <Payment onNext={mockOnNext} />
+        </TestWrapper>,
+      );
+
+      await user.click(screen.getByTestId('submit-button'));
+      mockAddOrder.mock.calls[0][1].onSuccess();
+
+      expect(mockUpdateStock).toHaveBeenCalledWith(
+        { items: [{ productId: 1, variantId: 101, quantity: 2 }] },
+        expect.anything(),
+      );
+    });
+
+    it('should update the stock before creating the order when the form is submitted', async () => {
+      const user = userEvent.setup();
+      mockLocalStorage.getItem.mockReturnValue(
+        JSON.stringify(mockCustomerInfo),
+      );
+
+      render(
+        <TestWrapper>
+          <Payment onNext={mockOnNext} />
+        </TestWrapper>,
+      );
+
+      await user.click(screen.getByTestId('submit-button'));
+
+      expect(mockUpdateStock).toHaveBeenCalledTimes(1);
+      expect(mockAddOrder).toHaveBeenCalledTimes(1);
+      expect(mockUpdateStock.mock.invocationCallOrder[0]).toBeLessThan(
+        mockAddOrder.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('should not create the order or clear the cart when the stock update fails', async () => {
+      const user = userEvent.setup();
+      mockLocalStorage.getItem.mockReturnValue(
+        JSON.stringify(mockCustomerInfo),
+      );
+      mockUpdateStock.mockImplementation(
+        (_payload: unknown, options?: { onError?: (e: Error) => void }) =>
+          options?.onError?.(new Error('Insufficient stock')),
+      );
+
+      render(
+        <TestWrapper>
+          <Payment onNext={mockOnNext} />
+        </TestWrapper>,
+      );
+
+      await user.click(screen.getByTestId('submit-button'));
+
+      expect(mockAddOrder).not.toHaveBeenCalled();
+      expect(mockDeleteCart).not.toHaveBeenCalled();
+      expect(mockOnNext).not.toHaveBeenCalled();
+      expect(mockLocalStorage.removeItem).not.toHaveBeenCalledWith('checkout');
+      expect(mockToastError).toHaveBeenCalledWith(
+        'Some items are no longer in stock. Please update your cart.',
+        expect.anything(),
+      );
+    });
+
+    it('should create the order, delete the cart and go next when the stock update succeeds', async () => {
+      const user = userEvent.setup();
+      mockLocalStorage.getItem.mockReturnValue(
+        JSON.stringify(mockCustomerInfo),
+      );
+
+      render(
+        <TestWrapper>
+          <Payment onNext={mockOnNext} />
+        </TestWrapper>,
+      );
+
+      await user.click(screen.getByTestId('submit-button'));
+
+      expect(mockAddOrder).toHaveBeenCalledTimes(1);
+      expect(mockDeleteCart).not.toHaveBeenCalled();
+
+      mockAddOrder.mock.calls[0][1].onSuccess();
+
+      expect(mockDeleteCart).toHaveBeenCalledWith({ userId: '1' });
+      expect(mockOnNext).toHaveBeenCalledTimes(1);
+      expect(mockToastError).not.toHaveBeenCalled();
     });
 
     it('should still place the order when the stored checkout details are corrupt', async () => {

@@ -33,8 +33,11 @@ const CartItem = ({ cartItem }: { cartItem: CartInterface }) => {
         return;
       }
 
-      const numValue = Number(inputValue);
-      if (isNaN(numValue)) return;
+      const parsedValue = Number(inputValue);
+      if (isNaN(parsedValue)) return;
+
+      // Only whole quantities are valid: "1.5" counts as 1
+      const numValue = Math.floor(parsedValue);
 
       const cartVariant = productDetail?.variants.find(
         (variant: ProductVariant) => variant.id === variantId,

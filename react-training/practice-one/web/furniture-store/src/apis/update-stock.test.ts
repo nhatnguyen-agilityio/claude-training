@@ -45,8 +45,8 @@ describe('useUpdateStock', () => {
 
     const stockPayload: StockUpdatePayloadInterface = {
       items: [
-        { variantId: 1, quantity: 2 },
-        { variantId: 2, quantity: 1 },
+        { productId: 1, variantId: 101, quantity: 2 },
+        { productId: 8, variantId: 101, quantity: 1 },
       ],
     };
 
@@ -72,6 +72,12 @@ describe('useUpdateStock', () => {
         body: JSON.stringify(stockPayload),
       },
     );
+    expect(JSON.parse(mockFetch.mock.calls[0][1]!.body as string)).toEqual({
+      items: [
+        { productId: 1, variantId: 101, quantity: 2 },
+        { productId: 8, variantId: 101, quantity: 1 },
+      ],
+    });
   });
 
   it('should handle update stock error', async () => {
@@ -82,7 +88,7 @@ describe('useUpdateStock', () => {
     } as Response);
 
     const stockPayload: StockUpdatePayloadInterface = {
-      items: [{ variantId: 1, quantity: 10 }],
+      items: [{ productId: 1, variantId: 1, quantity: 10 }],
     };
 
     const { result } = renderHook(() => useUpdateStock(), {
@@ -96,6 +102,32 @@ describe('useUpdateStock', () => {
     });
   });
 
+  it('should fall back to the first errors entry when the response has no top-level error', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: () =>
+        Promise.resolve({
+          success: false,
+          errors: [
+            { index: 0, error: 'Insufficient stock' },
+            { index: 1, error: 'Product not found' },
+          ],
+        }),
+    } as Response);
+
+    const { result } = renderHook(() => useUpdateStock(), {
+      wrapper: createWrapper(),
+    });
+
+    result.current.mutate({
+      items: [{ productId: 1, variantId: 101, quantity: 10 }],
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBe('Insufficient stock');
+    });
+  });
+
   it('should handle network error', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
@@ -103,7 +135,7 @@ describe('useUpdateStock', () => {
     } as Response);
 
     const stockPayload: StockUpdatePayloadInterface = {
-      items: [{ variantId: 1, quantity: 1 }],
+      items: [{ productId: 1, variantId: 1, quantity: 1 }],
     };
 
     const { result } = renderHook(() => useUpdateStock(), {
@@ -174,7 +206,7 @@ describe('useUpdateStock', () => {
     };
 
     const stockPayload: StockUpdatePayloadInterface = {
-      items: [{ variantId: 1, quantity: 2 }],
+      items: [{ productId: 1, variantId: 1, quantity: 2 }],
     };
 
     const { result } = renderHook(() => useUpdateStock(), {

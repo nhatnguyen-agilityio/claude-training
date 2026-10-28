@@ -185,91 +185,64 @@ server.patch("/products/update-stock", (req, res) => {
         return res.status(400).json({ error: "Items array is required" });
     }
 
-    const updateResults = [];
     const errors = [];
+    // Valid items grouped by product + variant, keeping the typed ids
+    const requested = new Map();
 
-    // Process each item update
-    for (const updateItem of items) {
-        const { variantId, quantity } = updateItem;
+    // Validate every item first: nothing is written unless all of them pass
+    items.forEach((updateItem, index) => {
+        const { productId, variantId, quantity } = updateItem || {};
 
-        if (!variantId || !quantity || quantity <= 0) {
-            errors.push({
-                variantId,
-                error: "Invalid variantId or quantity"
-            });
-            continue;
+        if (!productId || !variantId || quantity === undefined || quantity === null) {
+            errors.push({ index, productId, variantId, error: "Missing required fields" });
+            return;
         }
 
-        try {
-            // Find the product containing this variant
-            const products = db.get("products").value();
-            let productFound = false;
-            let variantFound = false;
-
-            for (const product of products) {
-                const variantIndex = product.variants.findIndex(v => v.id === variantId);
-
-                if (variantIndex !== -1) {
-                    const variant = product.variants[variantIndex];
-                    productFound = true;
-                    variantFound = true;
-
-                    // Check if enough stock available
-                    if (variant.stock < quantity) {
-                        errors.push({
-                            variantId,
-                            error: "Insufficient stock",
-                            available: variant.stock,
-                            requested: quantity
-                        });
-                        continue;
-                    }
-
-                    // Update stock
-                    const newStock = variant.stock - quantity;
-
-                    // Update the variant in database
-                    db.get("products")
-                        .find({ id: product.id })
-                        .get("variants")
-                        .find({ id: variantId })
-                        .assign({ stock: newStock })
-                        .write();
-
-                    updateResults.push({
-                        variantId,
-                        previousStock: variant.stock,
-                        newStock,
-                        quantityDeducted: quantity
-                    });
-
-                    break;
-                }
-            }
-
-            if (!productFound || !variantFound) {
-                errors.push({
-                    variantId,
-                    error: "Product variant not found"
-                });
-            }
-        } catch (error) {
-            errors.push({
-                variantId,
-                error: "Failed to update stock: " + error.message
-            });
+        if (!Number.isInteger(quantity) || quantity <= 0) {
+            errors.push({ index, productId, variantId, error: "Quantity must be a positive whole number" });
+            return;
         }
+
+        // Total requested per product + variant, so duplicates are checked together
+        const key = `${productId}:${variantId}`;
+        const total = (requested.get(key)?.quantity || 0) + quantity;
+
+        const stockError = checkVariantStock(db, updateItem, total);
+        if (stockError) {
+            const { availableStock, requestedQuantity, ...rest } = stockError.body;
+            errors.push({
+                index,
+                productId,
+                variantId,
+                ...rest,
+                ...(availableStock !== undefined && { available: availableStock }),
+                ...(requestedQuantity !== undefined && { requested: requestedQuantity }),
+            });
+            return;
+        }
+
+        requested.set(key, { productId, variantId, quantity: total });
+    });
+
+    if (errors.length > 0) {
+        return res.status(400).json({ success: false, errors });
     }
 
-    // Return results
-    const response = {
-        success: updateResults.length > 0,
-        updated: updateResults,
-        errors: errors.length > 0 ? errors : undefined
-    };
+    // Everything is valid: deduct once per product + variant, then write once
+    const updated = [];
+    for (const { productId, variantId, quantity: quantityDeducted } of requested.values()) {
+        const product = db.get("products").find({ id: productId }).value();
+        const variant = product.variants.find(v => v.id === variantId);
+        const previousStock = variant.stock;
+        const newStock = previousStock - quantityDeducted;
 
-    const statusCode = errors.length > 0 && updateResults.length === 0 ? 400 : 200;
-    return res.status(statusCode).json(response);
+        variant.stock = newStock;
+
+        updated.push({ productId, variantId, previousStock, newStock, quantityDeducted });
+    }
+    db.write();
+
+    return res.status(200).json({ success: true, updated });
 });
 
 // Custom API endpoint to get products with stock > 0

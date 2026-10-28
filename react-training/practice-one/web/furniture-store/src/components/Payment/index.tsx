@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 import { object, string, boolean } from 'zod';
 import type { infer as zodInfer } from 'zod';
 import {
@@ -164,26 +165,42 @@ const Payment = ({ onNext }: { onNext: () => void }) => {
       userId: user?.id,
       items: userCart?.flatMap((cart: CartInterface) => cart.item) || [],
     });
-    addOrder(orderPayload, {
-      onSuccess: () => {
-        // The checkout details are used up: don't leave them in the browser
-        localStorage.removeItem('checkout');
+    const placeOrder = () =>
+      addOrder(orderPayload, {
+        onSuccess: () => {
+          // The checkout details are used up: don't leave them in the browser
+          localStorage.removeItem('checkout');
+          deleteCart({ userId: String(user?.id) });
+          onNext();
+        },
+      });
 
-        // Update stock inventory by reducing stock for each ordered item
-        const stockUpdates =
-          userCart?.flatMap((cart: CartInterface) => ({
-            variantId: cart.item.variantId,
-            quantity: cart.item.quantity,
-          })) || [];
+    // Reduce the stock of each ordered item
+    const stockUpdates =
+      userCart?.flatMap((cart: CartInterface) => ({
+        productId: cart.item.productId,
+        variantId: cart.item.variantId,
+        quantity: cart.item.quantity,
+      })) || [];
 
-        if (stockUpdates.length > 0) {
-          updateStock({ items: stockUpdates });
-        }
+    if (stockUpdates.length === 0) {
+      placeOrder();
+      return;
+    }
 
-        deleteCart({ userId: String(user?.id) });
-        onNext();
+    // Reserve the stock first: no order is created if any item is short
+    updateStock(
+      { items: stockUpdates },
+      {
+        onSuccess: placeOrder,
+        onError: () => {
+          toast.error(
+            'Some items are no longer in stock. Please update your cart.',
+            { className: 'text-left' },
+          );
+        },
       },
-    });
+    );
   };
 
   return (

@@ -3,6 +3,7 @@ import { API_ENDPOINT } from '../constants/env-variables';
 import { API_ROUTES } from '../constants/api-routers';
 
 export interface StockUpdateInterface {
+  productId: number;
   variantId: number;
   quantity: number;
 }
@@ -25,7 +26,9 @@ const updateStock = async (stockPayload: StockUpdatePayloadInterface) => {
     let message = 'Failed to update stock';
     try {
       const data = await res.json();
-      if (data?.error) message = data.error;
+      // The all-or-nothing route returns { errors: [{ error }] } on a 400
+      const serverError = data?.error ?? data?.errors?.[0]?.error;
+      if (serverError) message = serverError;
     } catch {
       // ignore
     }
