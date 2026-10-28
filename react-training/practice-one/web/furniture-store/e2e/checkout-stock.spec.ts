@@ -2,7 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 import { E2E_API_URL } from './test-env';
 import { login, seedUser } from './helpers';
 
-// Product 8 and product 1 both have a variant with id 101
+// Product 8 and product 1 both have a variant with id 101; start-test-api.mjs
+// gives product 8 variant 101 a known stock of 5
 const PRODUCT_ID = 8;
 const OTHER_PRODUCT_ID = 1;
 const VARIANT_ID = 101;

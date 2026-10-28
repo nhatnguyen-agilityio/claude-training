@@ -4,6 +4,10 @@ const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const { startTestServer } = require("../support/server-fixture");
 
+const productId = 900001;
+const otherProductId = 900002;
+const variantId = 900101;
+const secondVariantId = 900102;
 const STOCK = 5;
 const OTHER_STOCK = 7;
 const SECOND_VARIANT_STOCK = 4;
@@ -14,10 +18,6 @@ const STRING_VARIANT_ID = "v1";
 
 let baseUrl;
 let closeServer;
-let productId;
-let otherProductId;
-let variantId;
-let secondVariantId;
 
 const updateStock = async (items) => {
     const res = await fetch(`${baseUrl}/products/update-stock`, {
@@ -35,25 +35,30 @@ const getStock = async (pId, vId) => {
 };
 
 beforeEach(async () => {
+    // Add our own products to the copy, so the tests do not depend on the seed data.
+    // Both products have a variant with the same id, to prove stock is found per product.
     ({ baseUrl, close: closeServer } = await startTestServer((db) => {
-        // Pick two products that share a variant id and set known stock, in the copy only
-        const product = db.products[0];
-        const otherProduct = db.products.find(
-            (p) => p.id !== product.id && p.variants.some((v) => v.id === product.variants[0].id)
+        db.products.push(
+            {
+                id: productId,
+                name: "Test product",
+                variants: [
+                    { id: variantId, stock: STOCK },
+                    { id: secondVariantId, stock: SECOND_VARIANT_STOCK },
+                ],
+            },
+            {
+                id: otherProductId,
+                name: "Other test product",
+                variants: [{ id: variantId, stock: OTHER_STOCK }],
+            },
+            // A product whose ids are strings, to prove ids are not parsed as numbers
+            {
+                id: STRING_PRODUCT_ID,
+                name: "String id product",
+                variants: [{ id: STRING_VARIANT_ID, stock: STRING_ID_STOCK }],
+            }
         );
-        productId = product.id;
-        otherProductId = otherProduct.id;
-        variantId = product.variants[0].id;
-        secondVariantId = product.variants[1].id;
-        product.variants[0].stock = STOCK;
-        product.variants[1].stock = SECOND_VARIANT_STOCK;
-        otherProduct.variants.find((v) => v.id === variantId).stock = OTHER_STOCK;
-        // A product whose ids are strings, to prove ids are not parsed as numbers
-        db.products.push({
-            ...product,
-            id: STRING_PRODUCT_ID,
-            variants: [{ ...product.variants[0], id: STRING_VARIANT_ID, stock: STRING_ID_STOCK }],
-        });
     }));
 });
 

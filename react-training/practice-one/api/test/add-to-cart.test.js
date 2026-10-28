@@ -8,11 +8,12 @@ const USER_ID = 999001;
 const STOCK = 3;
 const MISSING_ID = 999999;
 
+const productId = 900001;
+const inStockVariantId = 900101;
+const soldOutVariantId = 900102;
+
 let baseUrl;
 let closeServer;
-let productId;
-let inStockVariantId;
-let soldOutVariantId;
 
 const addToCart = async (item) => {
     const res = await fetch(`${baseUrl}/carts/add-to-cart`, {
@@ -24,14 +25,16 @@ const addToCart = async (item) => {
 };
 
 beforeEach(async () => {
-    // Set known stock values on the first product, in the copy only
+    // Add our own product to the copy, so the tests do not depend on the seed data
     ({ baseUrl, close: closeServer } = await startTestServer((db) => {
-        const product = db.products[0];
-        productId = product.id;
-        inStockVariantId = product.variants[0].id;
-        soldOutVariantId = product.variants[1].id;
-        product.variants[0].stock = STOCK;
-        product.variants[1].stock = 0;
+        db.products.push({
+            id: productId,
+            name: "Test product",
+            variants: [
+                { id: inStockVariantId, stock: STOCK },
+                { id: soldOutVariantId, stock: 0 },
+            ],
+        });
     }));
 });
 

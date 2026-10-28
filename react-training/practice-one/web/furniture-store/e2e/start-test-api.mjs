@@ -32,11 +32,30 @@ symlinkSync(
 );
 
 const db = JSON.parse(readFileSync(path.join(apiDir, 'db.json'), 'utf8'));
-const testStock = { 101: 2, 102: 0 };
-const product = db.products.find((p) => p.id === 1);
-product.variants.forEach((variant) => {
-  if (variant.id in testStock) variant.stock = testStock[variant.id];
-});
+// Known stock for the products the e2e specs depend on, set in the copy only:
+// product 1 (add-to-cart-stock) and product 8 (checkout-stock) both have a
+// variant 101, so the checkout spec can prove only the bought product is deducted
+const testStock = {
+  1: { 101: 2, 102: 0 },
+  8: { 101: 5 },
+};
+for (const [productId, variantStock] of Object.entries(testStock)) {
+  const product = db.products.find((p) => p.id === Number(productId));
+  if (!product) {
+    console.error(`Seed db.json has no product ${productId}, which e2e needs`);
+    process.exit(1);
+  }
+  for (const [variantId, stock] of Object.entries(variantStock)) {
+    const variant = product.variants.find((v) => v.id === Number(variantId));
+    if (!variant) {
+      console.error(
+        `Seed product ${productId} has no variant ${variantId}, which e2e needs`,
+      );
+      process.exit(1);
+    }
+    variant.stock = stock;
+  }
+}
 db.carts = [];
 writeFileSync(path.join(workDir, 'db.json'), JSON.stringify(db, null, 2));
 
