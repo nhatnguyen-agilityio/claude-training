@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { login, logout, readAuthUser, seedUser } from './helpers';
+import { login, logout, otherUser, readAuthUser, seedUser } from './helpers';
 
 const storedUser = () => ({ id: seedUser.id, username: seedUser.username });
+const otherStoredUser = () => ({
+  id: otherUser.id,
+  username: otherUser.username,
+});
 
 test.describe('Login remember me', () => {
   test.beforeEach(async ({ page }) => {
@@ -89,4 +93,26 @@ test.describe('Login remember me', () => {
       expect(await readAuthUser(page)).toEqual({ local: null, session: null });
     });
   }
+
+  test('should keep the remembered user and clear the tab user when both are stored on reload', async ({
+    page,
+  }) => {
+    await page.evaluate(
+      ([remembered, tabUser]) => {
+        localStorage.setItem('authUser', remembered);
+        sessionStorage.setItem('authUser', tabUser);
+      },
+      [JSON.stringify(storedUser()), JSON.stringify(otherStoredUser())],
+    );
+
+    await page.reload();
+
+    await expect(page.getByRole('button', { name: 'User' })).toBeVisible();
+    await expect
+      .poll(async () => {
+        const { local, session } = await readAuthUser(page);
+        return { local: JSON.parse(local ?? 'null'), session };
+      })
+      .toEqual({ local: storedUser(), session: null });
+  });
 });

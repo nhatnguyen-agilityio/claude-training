@@ -15,8 +15,10 @@ const dbPath = path.resolve(
 );
 
 // Read the seed user from the data instead of hard-coding credentials
-export const seedUser: SeedUser = JSON.parse(readFileSync(dbPath, 'utf8'))
-  .users[0];
+const seedUsers: SeedUser[] = JSON.parse(readFileSync(dbPath, 'utf8')).users;
+export const seedUser = seedUsers[0];
+// A second user, to check which of two stored users wins
+export const otherUser = seedUsers[1];
 
 export const login = async (page: Page, { remember = false } = {}) => {
   await page.getByRole('button', { name: 'Get Started' }).click();
