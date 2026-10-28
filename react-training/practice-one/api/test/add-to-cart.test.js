@@ -101,7 +101,7 @@ describe("POST /carts/add-to-cart stock check", () => {
 });
 
 describe("POST /carts/add-to-cart quantity check", () => {
-    for (const quantity of [-5, "abc", "5", 2.5]) {
+    for (const quantity of [0, -5, "abc", "5", 2.5]) {
         it(`should return 400 when the quantity is ${JSON.stringify(quantity)}`, async () => {
             const cartBefore = await getCart();
 
@@ -113,12 +113,13 @@ describe("POST /carts/add-to-cart quantity check", () => {
         });
     }
 
-    it("should return 400 when the quantity is 0", async () => {
+    it("should return 400 when the quantity is missing", async () => {
         const cartBefore = await getCart();
 
-        const { status } = await addToCart({ productId, variantId: inStockVariantId, quantity: 0 });
+        const { status, body } = await addToCart({ productId, variantId: inStockVariantId });
 
         assert.equal(status, 400);
+        assert.equal(body.error, "Missing required fields");
         assert.deepEqual(await getCart(), cartBefore);
     });
 });

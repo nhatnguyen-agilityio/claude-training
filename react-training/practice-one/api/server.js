@@ -119,7 +119,7 @@ server.post("/carts/add-to-cart", (req, res) => {
     const db = router.db; // lowdb instance
     const { userId, item, createdAt } = req.body;
 
-    if (!userId || !item || !item.productId || !item.variantId || !item.quantity) {
+    if (!userId || !item || !item.productId || !item.variantId || item.quantity === undefined || item.quantity === null) {
         return res.status(400).json({ error: "Missing required fields" });
     }
 
