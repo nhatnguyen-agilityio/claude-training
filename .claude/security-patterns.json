@@ -1,0 +1,17 @@
+{
+  "patterns": [
+    {
+      "rule_name": "hardcoded_api_url",
+      "substrings": ["http://localhost", "https://localhost", "http://127.0.0.1"],
+      "paths": ["**/web/furniture-store/src/**"],
+      "exclude_paths": ["**/*.test.ts", "**/*.test.tsx", "**/__mocks__/**"],
+      "reminder": "Hardcoded API URL. Build URLs from constants/env-variables.ts and constants/api-routers.ts (CLAUDE.md rule)."
+    },
+    {
+      "rule_name": "plain_text_password_compare",
+      "regex": "password\\s*===",
+      "paths": ["**/api/**"],
+      "reminder": "Plain-text password comparison. Hash passwords and compare the hash (for example with bcrypt.compare)."
+    }
+  ]
+}

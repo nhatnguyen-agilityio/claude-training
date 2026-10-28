@@ -1,0 +1,49 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`changes class when hovered 1`] = `
+<a
+  class="normal"
+  href="http://www.facebook.com"
+>
+  Facebook
+</a>
+`;
+
+exports[`changes class when hovered 2`] = `
+<a
+  class="hovered"
+  href="http://www.facebook.com"
+>
+  Facebook
+</a>
+`;
+
+exports[`changes class when hovered 3`] = `
+<a
+  class="normal"
+  href="http://www.facebook.com"
+>
+  Facebook
+</a>
+`;
+
+exports[`renders correctly 1`] = `
+<div>
+  <a
+    class="normal"
+    href="http://www.facebook.com"
+  >
+    Facebook
+  </a>
+</div>
+`;
+
+exports[`test property matchers 1`] = `
+{
+  "age": 30,
+  "createdAt": Any<Date>,
+  "email": "HbOg9@example.com",
+  "id": Any<Number>,
+  "name": "John Doe",
+}
+`;

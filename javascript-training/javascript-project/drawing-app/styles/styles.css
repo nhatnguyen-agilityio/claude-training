@@ -1,0 +1,50 @@
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+canvas {
+  border: 1px solid rgb(149, 50, 241);
+}
+
+.toolbox {
+  background-color: rgb(149, 50, 241);
+  width: 792px;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+}
+
+.tool {
+  width: 30px;
+  height: 30px;
+  margin-left: 10px;
+}
+
+.clear {
+  margin-left: auto;
+}
+
+.size {
+  text-align: center;
+  background-color: #fff;
+  border: none;
+}
+
+.disabled {
+  background-color: rgb(202, 202, 202);
+  border: none;
+}
+
+.text-value {
+  height: 25px;
+  margin-left: 10px;
+  display: none;
+}
+
+.show-text {
+  display: block;
+}

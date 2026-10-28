@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+.submit-btn {
+  background-color: #A91079;
+  color: #EEE;
+}

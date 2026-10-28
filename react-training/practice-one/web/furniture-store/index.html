@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite + React + TS</title>
+
+    <!-- DNS prefetch for image CDN to reduce connection time -->
+    <link rel="dns-prefetch" href="//ucarecdn.com" />
+    <link rel="preconnect" href="https://ucarecdn.com" crossorigin />
+
+    <link
+      rel="preload"
+      as="image"
+      href="https://ucarecdn.com/d474fba4-43b2-42d5-ace1-a804990777c5/-/resize/1280x/-/format/auto/-/quality/smart/"
+      media="(min-width: 1024px)"
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="image"
+      href="https://ucarecdn.com/6b6ab92c-287c-449a-8663-28380c902884/-/resize/1024x/-/format/auto/-/quality/smart/"
+      media="(min-width: 640px) and (max-width: 1023px)"
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="image"
+      href="https://ucarecdn.com/658288ac-40ec-43dd-893a-3c62c979259c/-/resize/640x/-/format/auto/-/quality/smart/"
+      media="(max-width: 639px)"
+      fetchpriority="high"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

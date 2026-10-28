@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+.tag-btn {
+  border-color: #2E0249;
+  color: #2E0249;
+  background-color: #EEE;
+  margin-right: 16px;
+  margin-bottom: 10px;
+}
+
+.tag-btn-active {
+  background-color: #A91079;
+  color: #EEE;
+}

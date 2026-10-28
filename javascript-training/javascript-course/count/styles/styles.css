@@ -1,0 +1,38 @@
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background-color: hsl(210, 36%, 96%);
+}
+
+main {
+  min-height: calc(100vh - 3rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container {
+  width: 500px;
+  text-align: center;
+}
+
+h1 {
+  font-size: 3em;
+}
+
+h2 {
+  font-size: 2em;
+}
+
+.btn {
+  min-width: 60px;
+  height: 30px;
+  background: none;
+  border: 2px solid #000;
+  border-radius: 5px;
+  margin: 0 5px;
+}
+
+.btn:hover {
+  color: #fff;
+  background-color: #000;
+}

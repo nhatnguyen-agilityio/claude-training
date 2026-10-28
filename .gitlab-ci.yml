@@ -1,0 +1,100 @@
+# Checks for the furniture-store API and web app.
+# Runs on merge requests, and on pushes or merges to main and feat/day-* branches.
+# The e2e stage only starts when every check job has passed.
+stages:
+  - check
+  - e2e
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # While a branch has an open MR, its MR pipeline already covers it: don't run a second one
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    # After a merge: check the combined code on the target branch
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH =~ /^feat\/day-/
+
+# One pnpm store for the api and web installs, cached between pipelines and shared by all jobs
+.pnpm-cache: &pnpm-cache
+  key:
+    files:
+      - react-training/practice-one/api/pnpm-lock.yaml
+      - react-training/practice-one/web/furniture-store/pnpm-lock.yaml
+  paths:
+    - .pnpm-store/
+
+# API tests (node:test). Runs when the api folder or this file changes.
+api-tests:
+  stage: check
+  image: node:20
+  rules:
+    - changes:
+        - .gitlab-ci.yml
+        - react-training/practice-one/api/**/*
+  cache: *pnpm-cache
+  before_script:
+    - cd react-training/practice-one/api
+    # corepack runs the pnpm version pinned in package.json ("packageManager")
+    - corepack enable
+    - pnpm config set store-dir "$CI_PROJECT_DIR/.pnpm-store"
+    - pnpm install --frozen-lockfile
+  script:
+    - node --test
+
+# Lint, build and unit tests. Runs when the web app or this file changes.
+furniture-store-checks:
+  stage: check
+  image: node:20
+  rules:
+    - changes:
+        - .gitlab-ci.yml
+        - react-training/practice-one/web/furniture-store/**/*
+  cache: *pnpm-cache
+  before_script:
+    - cd react-training/practice-one/web/furniture-store
+    # corepack runs the pnpm version pinned in package.json ("packageManager")
+    - corepack enable
+    - pnpm config set store-dir "$CI_PROJECT_DIR/.pnpm-store"
+    - pnpm install --frozen-lockfile
+  script:
+    - pnpm lint
+    - pnpm build
+    # Full Jest suite. Cap workers: in a container Jest sizes its pool from the host's CPUs, not the job's limits
+    - pnpm test -- --maxWorkers=50%
+
+# Playwright e2e against a throwaway copy of the API data. Runs when the api, the web app or this file changes.
+e2e-tests:
+  stage: e2e
+  # Same Node as the other jobs and .nvmrc (the Playwright image ships a newer Node)
+  image: node:20
+  variables:
+    # Keep the browsers inside the project so they can be cached
+    PLAYWRIGHT_BROWSERS_PATH: $CI_PROJECT_DIR/.ms-playwright
+  rules:
+    - changes:
+        - .gitlab-ci.yml
+        - react-training/practice-one/api/**/*
+        - react-training/practice-one/web/furniture-store/**/*
+  cache:
+    - *pnpm-cache
+    - key: playwright-1.55.0
+      paths:
+        - .ms-playwright/
+  before_script:
+    # corepack runs the pnpm version pinned in each package.json ("packageManager")
+    - corepack enable
+    - cd react-training/practice-one/web/furniture-store
+    - pnpm config set store-dir "$CI_PROJECT_DIR/.pnpm-store"
+    # Needs both the api and web dependencies
+    - (cd ../../api && pnpm install --frozen-lockfile)
+    - pnpm install --frozen-lockfile
+    # Chromium from the installed @playwright/test version, plus the system libraries it needs
+    - pnpm exec playwright install --with-deps chromium
+  script:
+    - pnpm test:e2e --reporter=list,html
+  artifacts:
+    when: on_failure
+    expire_in: 1 week
+    paths:
+      - react-training/practice-one/web/furniture-store/playwright-report/
+      - react-training/practice-one/web/furniture-store/test-results/

@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "furniture-store": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "mcp-server",
+        "run",
+        "server.py"
+      ],
+      "env": {}
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@0.0.83"
+      ],
+      "env": {}
+    }
+  }
+}
