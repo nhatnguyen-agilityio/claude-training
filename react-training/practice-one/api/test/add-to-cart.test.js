@@ -24,6 +24,11 @@ const addToCart = async (item) => {
     return { status: res.status, body: await res.json() };
 };
 
+const getCart = async () => {
+    const res = await fetch(`${baseUrl}/carts?userId=${USER_ID}`);
+    return res.json();
+};
+
 beforeEach(async () => {
     // Add our own product to the copy, so the tests do not depend on the seed data
     ({ baseUrl, close: closeServer } = await startTestServer((db) => {
@@ -44,18 +49,24 @@ afterEach(async () => {
 
 describe("POST /carts/add-to-cart stock check", () => {
     it("should return 400 with availableStock when a new row asks for more than the stock", async () => {
+        const cartBefore = await getCart();
+
         const { status, body } = await addToCart({ productId, variantId: inStockVariantId, quantity: STOCK + 1 });
 
         assert.equal(status, 400);
         assert.equal(body.error, "Insufficient stock");
         assert.equal(body.availableStock, STOCK);
+        assert.deepEqual(await getCart(), cartBefore);
     });
 
     it("should return 400 when a new row targets a variant with no stock", async () => {
+        const cartBefore = await getCart();
+
         const { status, body } = await addToCart({ productId, variantId: soldOutVariantId, quantity: 1 });
 
         assert.equal(status, 400);
         assert.equal(body.availableStock, 0);
+        assert.deepEqual(await getCart(), cartBefore);
     });
 
     it("should return 201 when a new row is within the stock", async () => {
@@ -67,12 +78,16 @@ describe("POST /carts/add-to-cart stock check", () => {
 
     it("should return 400 when an existing row is pushed over the stock", async () => {
         await addToCart({ productId, variantId: inStockVariantId, quantity: 2 });
+        const cartBefore = await getCart();
 
         const { status, body } = await addToCart({ productId, variantId: inStockVariantId, quantity: 2 });
 
         assert.equal(status, 400);
         assert.equal(body.availableStock, STOCK);
         assert.equal(body.requestedQuantity, 4);
+        const cartAfter = await getCart();
+        assert.deepEqual(cartAfter, cartBefore);
+        assert.equal(cartAfter[0].item.quantity, 2);
     });
 
     it("should return 200 with the summed quantity when an existing row stays within the stock", async () => {
@@ -88,17 +103,23 @@ describe("POST /carts/add-to-cart stock check", () => {
 describe("POST /carts/add-to-cart quantity check", () => {
     for (const quantity of [-5, "abc", "5", 2.5]) {
         it(`should return 400 when the quantity is ${JSON.stringify(quantity)}`, async () => {
+            const cartBefore = await getCart();
+
             const { status, body } = await addToCart({ productId, variantId: inStockVariantId, quantity });
 
             assert.equal(status, 400);
             assert.equal(body.error, "Quantity must be a positive whole number");
+            assert.deepEqual(await getCart(), cartBefore);
         });
     }
 
     it("should return 400 when the quantity is 0", async () => {
+        const cartBefore = await getCart();
+
         const { status } = await addToCart({ productId, variantId: inStockVariantId, quantity: 0 });
 
         assert.equal(status, 400);
+        assert.deepEqual(await getCart(), cartBefore);
     });
 });
 
