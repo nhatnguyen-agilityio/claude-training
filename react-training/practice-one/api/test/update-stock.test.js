@@ -2,12 +2,7 @@
 // temporary copy of db.json, so the real seed data is never touched.
 const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
-
-const SERVER_PATH = path.join(__dirname, "..", "server.js");
-const SEED_DB = path.join(__dirname, "..", "db.json");
+const { startTestServer } = require("../support/server-fixture");
 
 const STOCK = 5;
 const OTHER_STOCK = 7;
@@ -17,9 +12,8 @@ const STRING_ID_STOCK = 6;
 const STRING_PRODUCT_ID = "sofa-1";
 const STRING_VARIANT_ID = "v1";
 
-let tmpDir;
-let httpServer;
 let baseUrl;
+let closeServer;
 let productId;
 let otherProductId;
 let variantId;
@@ -41,45 +35,30 @@ const getStock = async (pId, vId) => {
 };
 
 beforeEach(async () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "api-test-"));
-    const dbFile = path.join(tmpDir, "db.json");
-
-    // Pick two products that share a variant id and set known stock, in the copy only
-    const db = JSON.parse(fs.readFileSync(SEED_DB, "utf8"));
-    const product = db.products[0];
-    const otherProduct = db.products.find(
-        (p) => p.id !== product.id && p.variants.some((v) => v.id === product.variants[0].id)
-    );
-    productId = product.id;
-    otherProductId = otherProduct.id;
-    variantId = product.variants[0].id;
-    secondVariantId = product.variants[1].id;
-    product.variants[0].stock = STOCK;
-    product.variants[1].stock = SECOND_VARIANT_STOCK;
-    otherProduct.variants.find((v) => v.id === variantId).stock = OTHER_STOCK;
-    // A product whose ids are strings, to prove ids are not parsed as numbers
-    db.products.push({
-        ...product,
-        id: STRING_PRODUCT_ID,
-        variants: [{ ...product.variants[0], id: STRING_VARIANT_ID, stock: STRING_ID_STOCK }],
-    });
-    fs.writeFileSync(dbFile, JSON.stringify(db));
-
-    // Load a fresh server so its router reads this test's copy
-    process.env.DB_FILE = dbFile;
-    delete require.cache[require.resolve(SERVER_PATH)];
-    const { server } = require(SERVER_PATH);
-
-    await new Promise((resolve) => {
-        httpServer = server.listen(0, resolve);
-    });
-    baseUrl = `http://localhost:${httpServer.address().port}`;
+    ({ baseUrl, close: closeServer } = await startTestServer((db) => {
+        // Pick two products that share a variant id and set known stock, in the copy only
+        const product = db.products[0];
+        const otherProduct = db.products.find(
+            (p) => p.id !== product.id && p.variants.some((v) => v.id === product.variants[0].id)
+        );
+        productId = product.id;
+        otherProductId = otherProduct.id;
+        variantId = product.variants[0].id;
+        secondVariantId = product.variants[1].id;
+        product.variants[0].stock = STOCK;
+        product.variants[1].stock = SECOND_VARIANT_STOCK;
+        otherProduct.variants.find((v) => v.id === variantId).stock = OTHER_STOCK;
+        // A product whose ids are strings, to prove ids are not parsed as numbers
+        db.products.push({
+            ...product,
+            id: STRING_PRODUCT_ID,
+            variants: [{ ...product.variants[0], id: STRING_VARIANT_ID, stock: STRING_ID_STOCK }],
+        });
+    }));
 });
 
 afterEach(async () => {
-    await new Promise((resolve) => httpServer.close(resolve));
-    delete process.env.DB_FILE;
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    await closeServer();
 });
 
 describe("PATCH /products/update-stock", () => {

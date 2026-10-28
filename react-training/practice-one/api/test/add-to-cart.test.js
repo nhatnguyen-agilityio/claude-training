@@ -2,20 +2,14 @@
 // copy of db.json, so the real seed data is never touched.
 const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
-
-const SERVER_PATH = path.join(__dirname, "..", "server.js");
-const SEED_DB = path.join(__dirname, "..", "db.json");
+const { startTestServer } = require("../support/server-fixture");
 
 const USER_ID = 999001;
 const STOCK = 3;
 const MISSING_ID = 999999;
 
-let tmpDir;
-let httpServer;
 let baseUrl;
+let closeServer;
 let productId;
 let inStockVariantId;
 let soldOutVariantId;
@@ -30,34 +24,19 @@ const addToCart = async (item) => {
 };
 
 beforeEach(async () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "api-test-"));
-    const dbFile = path.join(tmpDir, "db.json");
-
     // Set known stock values on the first product, in the copy only
-    const db = JSON.parse(fs.readFileSync(SEED_DB, "utf8"));
-    const product = db.products[0];
-    productId = product.id;
-    inStockVariantId = product.variants[0].id;
-    soldOutVariantId = product.variants[1].id;
-    product.variants[0].stock = STOCK;
-    product.variants[1].stock = 0;
-    fs.writeFileSync(dbFile, JSON.stringify(db));
-
-    // Load a fresh server so its router reads this test's copy
-    process.env.DB_FILE = dbFile;
-    delete require.cache[require.resolve(SERVER_PATH)];
-    const { server } = require(SERVER_PATH);
-
-    await new Promise((resolve) => {
-        httpServer = server.listen(0, resolve);
-    });
-    baseUrl = `http://localhost:${httpServer.address().port}`;
+    ({ baseUrl, close: closeServer } = await startTestServer((db) => {
+        const product = db.products[0];
+        productId = product.id;
+        inStockVariantId = product.variants[0].id;
+        soldOutVariantId = product.variants[1].id;
+        product.variants[0].stock = STOCK;
+        product.variants[1].stock = 0;
+    }));
 });
 
 afterEach(async () => {
-    await new Promise((resolve) => httpServer.close(resolve));
-    delete process.env.DB_FILE;
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    await closeServer();
 });
 
 describe("POST /carts/add-to-cart stock check", () => {
