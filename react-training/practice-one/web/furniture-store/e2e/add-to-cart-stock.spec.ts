@@ -1,14 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { E2E_API_URL } from './test-env';
-import { login, seedUser } from './helpers';
+import { login, productDetail, seedUser } from './helpers';
 
 // start-test-api.mjs sets product 1: variant 101 stock 2, variant 102 stock 0
-const productDetail = (page: Page) =>
-  page
-    .locator('div')
-    .filter({ has: page.getByRole('heading', { level: 2 }) })
-    .filter({ has: page.getByRole('spinbutton', { name: 'Quantity' }) })
-    .last();
 
 test.describe.configure({ mode: 'serial' });
 

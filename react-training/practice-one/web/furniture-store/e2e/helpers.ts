@@ -39,3 +39,10 @@ export const readAuthUser = (page: Page) =>
     local: localStorage.getItem('authUser'),
     session: sessionStorage.getItem('authUser'),
   }));
+
+export const productDetail = (page: Page) =>
+  page
+    .locator('div')
+    .filter({ has: page.getByRole('heading', { level: 2 }) })
+    .filter({ has: page.getByRole('spinbutton', { name: 'Quantity' }) })
+    .last();
